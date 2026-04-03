@@ -1,0 +1,69 @@
+/* ============================================================
+   index.css — Estilos globales del sistema de restaurante
+   ============================================================ */
+
+/* Google Fonts — Inter */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* Reset y variables globales */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-primary:    #0f3460;
+  --color-secondary:  #e94560;
+  --color-bg:         #f0f2f5;
+  --color-surface:    #ffffff;
+  --color-text:       #1a1a2e;
+  --radius-lg:        16px;
+  --shadow-card:      0 2px 12px rgba(0,0,0,0.08);
+  --transition:       all 0.2s ease;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 52, 96, 0.25);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 52, 96, 0.45);
+}
+
+/* Selección de texto */
+::selection {
+  background: rgba(233, 69, 96, 0.2);
+  color: var(--color-primary);
+}
+
+/* Animación de entrada suave */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeInUp 0.3s ease forwards;
+}
