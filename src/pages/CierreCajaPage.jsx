@@ -93,8 +93,12 @@ const CierreCajaPage = () => {
   const [loading, setLoading] = useState(false);
   const [snack, setSnack] = useState({ open: false, msg: '', severity: 'success' });
 
-  const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().split('T')[0]);
-  const [fechaFin, setFechaFin]       = useState(new Date().toISOString().split('T')[0]);
+  // Fecha local para filtros iniciales (Evitar desfase UTC)
+  const hoy = new Date();
+  const hoyLocal = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+
+  const [fechaInicio, setFechaInicio] = useState(hoyLocal);
+  const [fechaFin, setFechaFin]       = useState(hoyLocal);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -112,11 +116,22 @@ const CierreCajaPage = () => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const { filtradas, egresos } = useMemo(() => {
+    if (!fechaInicio || !fechaFin) return { filtradas: [], egresos: [] };
+    
+    // Normalizar fechas para comparación (Local)
     const fInit = new Date(fechaInicio + 'T00:00:00');
     const fEnd  = new Date(fechaFin + 'T23:59:59');
+    
     return {
-      filtradas: facturas.filter(x => new Date(x.createdAt) >= fInit && new Date(x.createdAt) <= fEnd),
-      egresos:   gastos.filter(x   => new Date(x.createdAt) >= fInit && new Date(x.createdAt) <= fEnd),
+      filtradas: facturas.filter(x => {
+        const d = new Date(x.createdAt);
+        // Comparación de objetos Date es robusta si ambos se crearon/parsearon bien
+        return d >= fInit && d <= fEnd;
+      }),
+      egresos:   gastos.filter(x => {
+        const d = new Date(x.createdAt);
+        return d >= fInit && d <= fEnd;
+      }),
     };
   }, [facturas, gastos, fechaInicio, fechaFin]);
 
@@ -377,7 +392,7 @@ const CierreCajaPage = () => {
         </table>
       </div>
 
-      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <Alert severity={snack.severity} variant="filled">{snack.msg}</Alert>
       </Snackbar>
     </Box>

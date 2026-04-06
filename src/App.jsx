@@ -2,6 +2,7 @@
 // src/App.jsx — Configuración de rutas con React Router
 // ============================================================
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Box, CircularProgress } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute   from './components/ProtectedRoute';
 import Layout           from './components/Layout';
@@ -16,6 +17,7 @@ import TomarPedidoPage  from './pages/TomarPedidoPage';
 import FacturacionPage  from './pages/FacturacionPage';
 import GastosPage       from './pages/GastosPage';
 import CierreCajaPage  from './pages/CierreCajaPage';
+import InventarioPage  from './pages/InventarioPage';
 
 function App() {
   return (
@@ -35,17 +37,18 @@ function App() {
             }
           >
             {/* Redirección por defecto al módulo de Usuarios */}
-            <Route index element={<Navigate to="/usuarios" replace />} />
-            <Route path="usuarios"     element={<UsuariosPage />} />
-            <Route path="clientes"     element={<ClientesPage />} />
-            <Route path="productos"    element={<ProductosPage />} />
-            <Route path="platos"       element={<PlatosPage />} />
-            <Route path="mesas"        element={<MesasPage />} />
-            <Route path="tomar-pedido" element={<TomarPedidoPage />} />
-            <Route path="comandas"     element={<ComandasPage />} />
-            <Route path="facturacion"  element={<FacturacionPage />} />
-            <Route path="gastos"       element={<GastosPage />} />
-            <Route path="cierre-caja"  element={<CierreCajaPage />} />
+            <Route index element={<Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress sx={{ color: '#e94560' }} /></Box>} />
+            <Route path="usuarios"     element={<ProtectedRoute modulo="usuarios"><UsuariosPage /></ProtectedRoute>} />
+            <Route path="clientes"     element={<ProtectedRoute modulo="clientes"><ClientesPage /></ProtectedRoute>} />
+            <Route path="productos"    element={<ProtectedRoute modulo="productos"><ProductosPage /></ProtectedRoute>} />
+            <Route path="platos"       element={<ProtectedRoute modulo="platos"><PlatosPage /></ProtectedRoute>} />
+            <Route path="mesas"        element={<ProtectedRoute modulo="mesas"><MesasPage /></ProtectedRoute>} />
+            <Route path="tomar-pedido" element={<ProtectedRoute modulo="tomar_pedido"><TomarPedidoPage /></ProtectedRoute>} />
+            <Route path="comandas"     element={<ProtectedRoute modulo="comandas"><ComandasPage /></ProtectedRoute>} />
+            <Route path="facturacion"  element={<ProtectedRoute modulo="facturacion"><FacturacionPage /></ProtectedRoute>} />
+            <Route path="gastos"       element={<ProtectedRoute modulo="gastos"><GastosPage /></ProtectedRoute>} />
+            <Route path="inventario"   element={<ProtectedRoute modulo="inventario"><InventarioPage /></ProtectedRoute>} />
+            <Route path="cierre-caja"  element={<ProtectedRoute modulo="cierre_caja"><CierreCajaPage /></ProtectedRoute>} />
           </Route>
 
           {/* Fallback: redirige al login */}

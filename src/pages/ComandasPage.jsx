@@ -8,11 +8,14 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, IconButton, Tooltip, Dialog,
   DialogTitle, DialogContent, DialogActions, Button, Grid,
+  TextField, InputAdornment
 } from '@mui/material';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import SearchIcon from '@mui/icons-material/Search';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import { comandaService, productoService } from '../services/api';
 
@@ -268,7 +271,7 @@ const ComandasPage = () => {
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <Alert severity={snack.severity} variant="filled" sx={{ borderRadius: 2 }}>{snack.msg}</Alert>
       </Snackbar>
     </Box>

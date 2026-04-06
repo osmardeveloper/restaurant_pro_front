@@ -39,7 +39,7 @@ const LoginPage = () => {
     try {
       const res = await authService.login(form);
       login(res.data.token, res.data.usuario);
-      navigate('/usuarios');
+      navigate('/');
     } catch (err) {
       setError(err.response?.data?.message || 'Error al iniciar sesión. Verifica las credenciales.');
     } finally {

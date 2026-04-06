@@ -39,6 +39,11 @@ const GastosPage = () => {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ nombre: '', descripcion: '', metodo_pago: 'efectivo', monto: '' });
 
+  // Delete State
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [masterKey, setMasterKey] = useState('');
+
   // Filtros Periodo
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
@@ -93,20 +98,31 @@ const GastosPage = () => {
       }
       setModalOpen(false);
       setForm({ nombre: '', descripcion: '', metodo_pago: 'efectivo', monto: '' });
+      setTab(0); // Asegurar que vemos el gasto en la pestaña de "Hoy"
       fetchGastos();
     } catch (err) {
       setSnack({ open: true, msg: err.response?.data?.message || 'Error al guardar.', severity: 'error' });
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('¿Eliminar permanentemente este egreso?')) return;
+  const handleDelete = (id) => {
+    setDeleteId(id);
+    setMasterKey('');
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmarEliminar = async () => {
+    if (!masterKey) {
+      setSnack({ open: true, msg: 'Ingresa la clave maestra.', severity: 'warning' });
+      return;
+    }
     try {
-      await gastoService.delete(id);
-      setSnack({ open: true, msg: 'Gasto eliminado.', severity: 'success' });
+      await gastoService.remove(deleteId, masterKey);
+      setSnack({ open: true, msg: 'Gasto eliminado correctamente.', severity: 'success' });
+      setDeleteDialogOpen(false);
       fetchGastos();
-    } catch {
-      setSnack({ open: true, msg: 'Error al eliminar.', severity: 'error' });
+    } catch (err) {
+      setSnack({ open: true, msg: err.response?.data?.message || 'Clave incorrecta o error al eliminar.', severity: 'error' });
     }
   };
 
@@ -228,14 +244,16 @@ const GastosPage = () => {
                            </Typography>
                         </TableCell>
                         <TableCell align="center">
-                          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                            <IconButton size="small" color="primary" onClick={() => abrirEditar(g)}>
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton size="small" color="error" onClick={() => handleDelete(g._id)}>
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
+                          {usuario?.rol === 'admin' && (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+                              <IconButton size="small" color="primary" onClick={() => abrirEditar(g)}>
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton size="small" color="error" onClick={() => handleDelete(g._id)}>
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
@@ -289,7 +307,27 @@ const GastosPage = () => {
         </form>
       </Dialog>
 
-      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+      {/* ── MODAL ELIMINAR CON CLAVE MAESTRA ── */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>Confirmar Eliminación</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 3 }}>
+            Esta acción es irreversible. Para continuar, por favor ingresa la <strong>Clave Maestra</strong> de seguridad.
+          </Typography>
+          <TextField 
+            fullWidth label="Clave Maestra" type="password" size="small" autoComplete="off"
+            value={masterKey} onChange={e => setMasterKey(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && confirmarEliminar()}
+            autoFocus
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDeleteDialogOpen(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button onClick={confirmarEliminar} variant="contained" color="error" sx={{ borderRadius: 2 }}>Confirmar Eliminar</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <Alert severity={snack.severity} variant="filled" sx={{ borderRadius: 2 }}>{snack.msg}</Alert>
       </Snackbar>
     </Box>

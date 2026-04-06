@@ -22,7 +22,7 @@ const PlatosPage = () => {
   const [platos, setPlatos]             = useState([]);
   const [loading, setLoading]           = useState(false);
   const [dialogOpen, setDialogOpen]     = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, nombre: '' });
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, nombre: '', masterKey: '' });
   const [editId, setEditId]             = useState(null);
   const [form, setForm]                 = useState(FORM_INICIAL);
   const [formErrors, setFormErrors]     = useState({});
@@ -89,13 +89,17 @@ const PlatosPage = () => {
   };
 
   const confirmarEliminar = async () => {
+    if (!deleteDialog.masterKey) {
+      showSnack('Ingresa la clave maestra.', 'warning');
+      return;
+    }
     try {
-      await productoService.remove(deleteDialog.id);
+      await productoService.remove(deleteDialog.id, deleteDialog.masterKey);
       showSnack('Plato eliminado correctamente.');
-      setDeleteDialog({ open: false, id: null, nombre: '' });
+      setDeleteDialog({ open: false, id: null, nombre: '', masterKey: '' });
       fetchPlatos();
-    } catch {
-      showSnack('Error al eliminar el plato.', 'error');
+    } catch (err) {
+      showSnack(err.response?.data?.message || 'Clave incorrecta o error al eliminar el plato.', 'error');
     }
   };
 
@@ -105,6 +109,15 @@ const PlatosPage = () => {
     {
       field: 'precio', headerName: 'Precio', width: 150, sortable: false,
       renderCell: ({ value }) => <Typography fontWeight={600} color="#0f3460">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value)}</Typography>,
+    },
+    {
+      field: 'acciones', headerName: 'Acciones', width: 110, sortable: false,
+      renderCell: ({ row }) => (
+        <Box sx={{ display: 'flex', gap: 0.5 }}>
+          <Tooltip title="Editar"><IconButton size="small" onClick={() => abrirEditar(row)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+          <Tooltip title="Eliminar"><IconButton size="small" onClick={() => setDeleteDialog({ open: true, id: row._id, nombre: row.nombre })} sx={{ color: '#e94560' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+        </Box>
+      ),
     },
   ];
 
@@ -163,16 +176,27 @@ const PlatosPage = () => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, nombre: '' })} PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle fontWeight={700}>¿Eliminar plato?</DialogTitle>
-        <DialogContent><Typography>¿Estás seguro de eliminar <strong>{deleteDialog.nombre}</strong>?</Typography></DialogContent>
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, nombre: '', masterKey: '' })} PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>Eliminar Plato</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 3 }}>
+            ¿Estás seguro de eliminar <strong>{deleteDialog.nombre}</strong>? Esta acción es irreversible.
+            Ingresa la <strong>Clave Maestra</strong> para confirmar:
+          </Typography>
+          <TextField 
+            fullWidth label="Clave Maestra" type="password" size="small" autoComplete="off"
+            value={deleteDialog.masterKey} onChange={e => setDeleteDialog(p => ({ ...p, masterKey: e.target.value }))}
+            onKeyPress={(e) => e.key === 'Enter' && confirmarEliminar()}
+            autoFocus
+          />
+        </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-          <Button onClick={() => setDeleteDialog({ open: false, id: null, nombre: '' })} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
-          <Button id="confirm-delete-plato-btn" onClick={confirmarEliminar} variant="contained" color="error" sx={{ borderRadius: 2 }}>Eliminar</Button>
+          <Button onClick={() => setDeleteDialog({ open: false, id: null, nombre: '', masterKey: '' })} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button id="confirm-delete-plato-btn" onClick={confirmarEliminar} variant="contained" color="error" sx={{ borderRadius: 2 }}>Confirmar Eliminar</Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <Alert severity={snack.severity} variant="filled" sx={{ borderRadius: 2 }}>{snack.msg}</Alert>
       </Snackbar>
     </Box>

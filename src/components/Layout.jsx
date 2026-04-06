@@ -1,12 +1,12 @@
 // ============================================================
 // src/components/Layout.jsx — Shell principal con AppBar y Drawer
 // ============================================================
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
   AppBar, Box, CssBaseline, Divider, Drawer, IconButton,
   List, ListItem, ListItemButton, ListItemIcon, ListItemText,
-  Toolbar, Typography, Avatar, Chip, Tooltip,
+  Toolbar, Typography, Avatar, Chip, Tooltip, CircularProgress
 } from '@mui/material';
 import MenuIcon           from '@mui/icons-material/Menu';
 import PeopleIcon         from '@mui/icons-material/People';
@@ -22,31 +22,63 @@ import PointOfSaleIcon    from '@mui/icons-material/PointOfSale';
 import RequestQuoteIcon   from '@mui/icons-material/RequestQuote';
 import AssessmentIcon     from '@mui/icons-material/Assessment';
 import { useAuth }        from '../context/AuthContext';
+import { configuracionService } from '../services/api';
 
 const DRAWER_WIDTH = 260;
 
 const navItems = [
-  { label: 'Usuarios',     path: '/usuarios',     icon: <PeopleIcon /> },
-  { label: 'Clientes',     path: '/clientes',     icon: <AssignmentIndIcon /> },
-  { label: 'Productos',    path: '/productos',    icon: <InventoryIcon /> },
-  { label: 'Platos',       path: '/platos',       icon: <RestaurantMenuIcon /> },
-  { label: 'Mesas',        path: '/mesas',        icon: <TableBarIcon /> },
-  { label: 'Tomar Pedido', path: '/tomar-pedido', icon: <PostAddIcon /> },
-  { label: 'Comandas',     path: '/comandas',     icon: <ReceiptLongIcon /> },
-  { label: 'Facturación',  path: '/facturacion',  icon: <PointOfSaleIcon /> },
-  { label: 'Gastos',       path: '/gastos',       icon: <RequestQuoteIcon /> },
-  { label: 'Cierre de Caja', path: '/cierre-caja', icon: <AssessmentIcon /> },
+  { key: 'usuarios',     label: 'Usuarios',     path: '/usuarios',     icon: <PeopleIcon /> },
+  { key: 'clientes',     label: 'Clientes',     path: '/clientes',     icon: <AssignmentIndIcon /> },
+  { key: 'productos',    label: 'Productos',    path: '/productos',    icon: <InventoryIcon /> },
+  { key: 'platos',       label: 'Platos',       icon: <RestaurantMenuIcon />, path: '/platos' },
+  { key: 'mesas',        label: 'Mesas',        path: '/mesas',        icon: <TableBarIcon /> },
+  { key: 'tomar_pedido', label: 'Tomar Pedido', path: '/tomar-pedido', icon: <PostAddIcon /> },
+  { key: 'comandas',     label: 'Comandas',     path: '/comandas',     icon: <ReceiptLongIcon /> },
+  { key: 'facturacion',  label: 'Facturación',  path: '/facturacion',  icon: <PointOfSaleIcon /> },
+  { key: 'gastos',       label: 'Gastos',       path: '/gastos',       icon: <RequestQuoteIcon /> },
+  { key: 'inventario',   label: 'Inventario',   path: '/inventario',   icon: <InventoryIcon /> },
+  { key: 'cierre_caja',  label: 'Cierre de Caja', path: '/cierre-caja', icon: <AssessmentIcon /> },
 ];
 
-const rolColor = { admin: 'error', mesero: 'primary', cocina: 'warning' };
+const rolColor = { admin: 'error', mesero: 'primary', cocina: 'warning', cajero: 'success' };
+const rolLabel = { admin: 'Admin', mesero: 'Mesero', cocina: 'Cocina', cajero: 'Cajero' };
 
 const Layout = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { usuario, logout } = useAuth();
+  const { usuario, logout, permisos, loadingPermisos } = useAuth();
 
   const handleLogout = () => { logout(); navigate('/login'); };
+
+  // Filtrar ítems permitidos - Memoizado para evitar bucles de renderizado
+  const itemsPermitidos = useMemo(() => {
+    return navItems.filter(item => {
+      if (usuario?.rol === 'admin') return true; 
+      return permisos && permisos[item.key] === true;
+    });
+  }, [usuario?.rol, permisos]);
+
+  // Redirección dinámica al primer módulo disponible si estamos en la raíz o ruta bloqueada
+  useEffect(() => {
+    if (!loadingPermisos && permisos) {
+      const isRoot = location.pathname === '/' || location.pathname === '';
+      
+      // Encontrar el item actual basado en el path de la URL
+      const currentItem = navItems.find(n => location.pathname.startsWith(n.path));
+      const hasPermission = usuario?.rol === 'admin' || (currentItem && permisos[currentItem.key]);
+
+      if (isRoot || !hasPermission) {
+        if (itemsPermitidos.length > 0) {
+          const target = itemsPermitidos[0].path;
+          // Evitar navegar si ya estamos en el destino para prevenir bucles
+          if (location.pathname !== target) {
+            navigate(target, { replace: true });
+          }
+        }
+      }
+    }
+  }, [loadingPermisos, permisos, location.pathname, itemsPermitidos, navigate, usuario?.rol]);
 
   const drawerContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' }}>
@@ -75,7 +107,7 @@ const Layout = () => {
                 {usuario.nombre}
               </Typography>
               <Chip
-                label={usuario.rol}
+                label={rolLabel[usuario.rol] || usuario.rol}
                 size="small"
                 color={rolColor[usuario.rol] || 'default'}
                 sx={{ height: 18, fontSize: '0.65rem', mt: 0.3 }}
@@ -87,28 +119,34 @@ const Layout = () => {
 
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 1 }} />
 
-      <List sx={{ flex: 1, px: 1, overflowY: 'auto' }}>
-        {navItems.map(({ label, path, icon }) => {
-          const isActive = location.pathname.startsWith(path);
-          return (
-            <ListItem key={path} disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton
-                onClick={() => navigate(path)}
-                sx={{
-                  borderRadius: 2,
-                  color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
-                  background: isActive ? 'linear-gradient(135deg, #e94560, #c62a47)' : 'transparent',
-                  '&:hover': { background: isActive ? 'linear-gradient(135deg, #e94560, #c62a47)' : 'rgba(255,255,255,0.07)', color: '#fff' },
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>{icon}</ListItemIcon>
-                <ListItemText primary={label} primaryTypographyProps={{ fontWeight: isActive ? 700 : 400, fontSize: '0.9rem' }} />
-              </ListItemButton>
-            </ListItem>
-          );
-        })}
-      </List>
+      {loadingPermisos ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <CircularProgress size={24} sx={{ color: '#e94560' }} />
+        </Box>
+      ) : (
+        <List sx={{ flex: 1, px: 1, overflowY: 'auto' }}>
+          {itemsPermitidos.map(({ label, path, icon }) => {
+            const isActive = location.pathname.startsWith(path);
+            return (
+              <ListItem key={path} disablePadding sx={{ mb: 0.5 }}>
+                <ListItemButton
+                  onClick={() => navigate(path)}
+                  sx={{
+                    borderRadius: 2,
+                    color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
+                    background: isActive ? 'linear-gradient(135deg, #e94560, #c62a47)' : 'transparent',
+                    '&:hover': { background: isActive ? 'linear-gradient(135deg, #e94560, #c62a47)' : 'rgba(255,255,255,0.07)', color: '#fff' },
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>{icon}</ListItemIcon>
+                  <ListItemText primary={label} primaryTypographyProps={{ fontWeight: isActive ? 700 : 400, fontSize: '0.9rem' }} />
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
+        </List>
+      )}
 
       <Box sx={{ p: 2 }}>
         <ListItemButton

@@ -1,13 +1,15 @@
 // ============================================================
 // src/pages/FacturacionPage.jsx
 // ============================================================
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Paper, Grid, TextField, Autocomplete,
   Button, MenuItem, Select, FormControl, InputLabel, IconButton,
-  Divider, Snackbar, Alert, Tabs, Tab,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip
+  Divider, Snackbar, Alert, Tabs, Tab, Tooltip,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip,
+  CircularProgress
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PrintIcon from '@mui/icons-material/Print';
@@ -15,7 +17,11 @@ import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import TodayIcon from '@mui/icons-material/Today';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import { productoService, clienteService, facturacionService } from '../services/api';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
+import TableBarIcon from '@mui/icons-material/TableBar';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import { productoService, clienteService, facturacionService, mesaService, comandaService } from '../services/api';
 
 const METODOS_PAGO = [
   { value: 'efectivo', label: 'Efectivo' },
@@ -25,104 +31,195 @@ const METODOS_PAGO = [
   { value: 'datafono', label: 'Datáfono (Tarjeta)' }
 ];
 
+const TIPOS_DOCUMENTO = [
+  { value: 'cedula_identidad', label: 'Cédula de Identidad' },
+  { value: 'cedula_extranjeria', label: 'Cédula de Extranjería' },
+  { value: 'pasaporte', label: 'Pasaporte' },
+  { value: 'documento_extranjero', label: 'Documento Extranjero' },
+];
+
 const FacturacionPage = () => {
-  const location = useLocation();
   const navigate = useNavigate();
-
-  // TABS
+  const location = useLocation();
+  const { state: navState } = location;
+  
   const [tab, setTab] = useState(0);
-
-  // Data Base
   const [platos, setPlatos] = useState([]);
   const [clientes, setClientes] = useState([]);
-  const [facturas, setFacturas] = useState([]);
+  const [mesas, setMesas] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingMesa, setLoadingMesa] = useState(false);
 
   // Estado del Facturador (Tab 0)
-  const [pedidoActual, setPedidoActual] = useState([]);
   const [cliente, setCliente] = useState(null);
-  const [metodoPago, setMetodoPago] = useState('efectivo');
-  const [comandaId, setComandaId] = useState(null);
+  const [pedidoActual, setPedidoActual] = useState([]);
+  const [metodoPago, setMetodoPago] = useState('');
+  const [idComandaVinculada, setIdComandaVinculada] = useState(null);
+  const [mesaSeleccionada, setMesaSeleccionada] = useState(null);
   const [busquedaProd, setBusquedaProd] = useState('');
+  const [categoria, setCategoria] = useState('todas');
 
-  // Estados Filtros (Tab 2)
+  // Modal Crear Cliente Rápido
+  const [openModalCliente, setOpenModalCliente] = useState(false);
+  const [formCliente, setFormCliente] = useState({ nombre: '', apellido: '', numero_documento: '', tipo_documento: '', telefono: '' });
+
+  const [snack, setSnack] = useState({ open: false, msg: '', severity: 'success' });
+  const [facturaFinal, setFacturaFinal] = useState(null);
+  const [facturas, setFacturas] = useState([]);
+  
+  // Borrar Factura (Seguridad)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [masterKey, setMasterKey] = useState('');
+
   const [filtroGeneral, setFiltroGeneral] = useState('');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
-  // Recibo Termico
-  const [facturaFinal, setFacturaFinal] = useState(null);
+  const showSnack = (msg, severity = 'success') => setSnack({ open: true, msg, severity });
 
-  const [snack, setSnack] = useState({ open: false, msg: '', severity: 'success' });
-
-  const fetchGlobalData = async () => {
+  const fetchDatos = useCallback(async () => {
+    setLoading(true);
     try {
-      const [prodRes, cliRes, factRes] = await Promise.all([
-        productoService.getAll(),
+      const [resC, resP, resM, resF] = await Promise.all([
         clienteService.getAll(),
-        facturacionService.getAll()
+        productoService.getAll(),
+        mesaService.getAll(),
+        facturacionService.getAll(),
       ]);
-      setPlatos(prodRes.data);
-      setClientes(cliRes.data);
-      setFacturas(factRes.data);
+      setClientes(resC.data);
+      setPlatos(resP.data);
+      setMesas(resM.data);
+      setFacturas(resF.data);
 
-      if (location.state && location.state.comandaId) {
-        setPedidoActual(location.state.productos?.map(p => ({ ...p, uid: Math.random().toString() })) || []);
-        setComandaId(location.state.comandaId);
-        if (location.state.cliente) {
-          const foundClient = cliRes.data.find(c => c._id === location.state.cliente._id);
-          setCliente(foundClient || null);
+      // Si venimos de la pantalla de comandas (navegación directa)
+      if (navState?.comandaId) {
+        setPedidoActual(navState.productos || []);
+        setIdComandaVinculada(navState.comandaId);
+        if (navState.cliente) {
+          const cli = resC.data.find(c => c._id === navState.cliente._id);
+          setCliente(cli || null);
         }
-        setTab(0);
-        // Clear history state to avoid infinite auto-fill on refresh
+        // Limpiamos el estado para evitar recargas infinitas
         navigate(location.pathname, { replace: true });
       }
     } catch (error) {
-      setSnack({ open: true, msg: 'Error al cargar datos básicos.', severity: 'error' });
+      console.error(error);
+      showSnack('Error al cargar datos básicos.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [navState, navigate, location.pathname]);
+
+  useEffect(() => { fetchDatos(); }, [fetchDatos]);
+
+  const cargarComandaPorMesa = async (mesaId) => {
+    if (!mesaId) {
+      setMesaSeleccionada(null);
+      return;
+    }
+    setLoadingMesa(true);
+    try {
+      const res = await comandaService.getAll();
+      const comandaActiva = res.data.find(c => 
+        c.id_mesa && c.id_mesa._id === mesaId && !c.facturada
+      );
+
+      if (comandaActiva) {
+        setPedidoActual(comandaActiva.ids_productos || []);
+        setCliente(comandaActiva.id_cliente || null);
+        setIdComandaVinculada(comandaActiva._id);
+        showSnack(`Comanda de la Mesa #${comandaActiva.id_mesa.numero_mesa} cargada.`);
+      } else {
+        showSnack('Esta mesa no tiene comandas activas pendientes.', 'warning');
+      }
+    } catch (error) {
+      showSnack('Error al buscar comandas de esta mesa.', 'error');
+    } finally {
+      setLoadingMesa(false);
     }
   };
 
-  useEffect(() => { fetchGlobalData(); }, [location.state]);
-
   // -------- LOGICA TAB 0: CAJA --------
   const totalCaja = pedidoActual.reduce((acc, curr) => acc + (curr.precio || 0), 0);
-  const prodFiltrados = platos.filter(p => (p.nombre || '').toLowerCase().includes(busquedaProd.toLowerCase()));
+  const prodFiltrados = platos.filter(p => {
+    const matchBusqueda = (p.nombre || '').toLowerCase().includes(busquedaProd.toLowerCase());
+    const matchCategoria = categoria === 'todas' || p.tipo === categoria;
+    return matchBusqueda && matchCategoria;
+  });
 
   const agregarProducto = (prod) => setPedidoActual(prev => [...prev, { ...prod, uid: Math.random().toString(36).substr(2, 9) }]);
   const quitarProducto = (uid) => setPedidoActual(prev => prev.filter(item => item.uid !== uid));
 
   const manejarFacturacion = async () => {
-    if (pedidoActual.length === 0) {
-      setSnack({ open: true, msg: 'No hay productos para facturar', severity: 'warning' });
+    if (!metodoPago) {
+      showSnack('Debes seleccionar un método de pago.', 'warning');
       return;
     }
+    if (pedidoActual.length === 0) {
+      showSnack('No hay productos en el pedido para facturar.', 'warning');
+      return;
+    }
+
     try {
       const payload = {
         metodo_pago: metodoPago,
         total_pagado: totalCaja,
         id_cliente: cliente?._id || null,
-        id_comanda: comandaId || null,
         detalle_pedido: pedidoActual.map(p => ({
           id_producto: p._id,
           nombre: p.nombre,
           precio: p.precio,
           cantidad: 1
-        }))
+        })),
+        id_comanda: idComandaVinculada
       };
 
+      // 1. Crear la Factura
       const res = await facturacionService.create(payload);
       setFacturaFinal(res.data);
-      setSnack({ open: true, msg: 'Pago procesado exitosamente', severity: 'success' });
+      
+      // 2. Si vino de una mesa, cerrar la comanda
+      if (idComandaVinculada) {
+        await comandaService.update(idComandaVinculada, { facturada: true });
+        showSnack('Factura creada y mesa liberada correctamente.', 'success');
+      } else {
+        showSnack('Factura procesada con éxito.', 'success');
+      }
 
-      setTimeout(() => {
-        window.print();
-        setPedidoActual([]);
-        setCliente(null);
-        setComandaId(null);
-        fetchGlobalData(); // Recargar facturas
-      }, 500);
+      // 3. Limpiar Todo
+      setPedidoActual([]);
+      setCliente(null);
+      setIdComandaVinculada(null);
+      setMesaSeleccionada(null);
+      setMetodoPago('');
+      
+      // 4. Refrescar datos para liberar mesa en UI local
+      fetchDatos();
+      
+      // Imprimir comprobante
+      setTimeout(() => { window.print(); }, 500);
 
-    } catch (err) {
-      setSnack({ open: true, msg: err.response?.data?.message || 'Error al procesar pago.', severity: 'error' });
+    } catch (error) {
+      console.error('Error en facturación:', error);
+      showSnack('Error al procesar el pago o cerrar la comanda.', 'error');
+    }
+  };
+
+  const guardarCliente = async () => {
+    if (!formCliente.nombre || !formCliente.numero_documento) {
+      showSnack('Nombre y documento son obligatorios para registrar cliente.', 'warning');
+      return;
+    }
+    try {
+      const res = await clienteService.create(formCliente);
+      setClientes(prev => [...prev, res.data]);
+      setCliente(res.data);
+      setOpenModalCliente(false);
+      setFormCliente({ nombre: '', apellido: '', numero_documento: '', tipo_documento: '', telefono: '' });
+      showSnack('Cliente registrado y seleccionado para la factura.');
+    } catch (error) {
+      showSnack('Error al registrar el cliente.', 'error');
     }
   };
 
@@ -133,8 +230,28 @@ const FacturacionPage = () => {
     }, 300);
   };
 
+  const handleDelete = (id) => {
+    setDeleteId(id);
+    setMasterKey('');
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmarEliminar = async () => {
+    if (!masterKey) {
+      showSnack('Ingresa la clave maestra.', 'warning');
+      return;
+    }
+    try {
+      await facturacionService.remove(deleteId, masterKey);
+      showSnack('Factura eliminada e inventario restituido.', 'success');
+      setDeleteDialogOpen(false);
+      fetchDatos(); // Refrescar lista
+    } catch (err) {
+      showSnack(err.response?.data?.message || 'Error al eliminar o clave incorrecta.', 'error');
+    }
+  };
   return (
-    <Box>
+    <Box sx={{ width: 'calc(100% + 48px)', ml: -3, mr: -3, px: 3 }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={tab} onChange={(e, val) => setTab(val)} textColor="primary" indicatorColor="primary">
           <Tab icon={<PointOfSaleIcon />} label="Punto de Caja" iconPosition="start" />
@@ -143,87 +260,140 @@ const FacturacionPage = () => {
         </Tabs>
       </Box>
 
-      {/* TAB 0: CAJA CENTRAL */}
       {tab === 0 && (
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={7}>
-            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', minHeight: '60vh' }}>
-              <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Seleccionar Items</Typography>
-              <TextField
-                fullWidth size="small" placeholder="Buscar producto para venta rápida..."
-                value={busquedaProd} onChange={e => setBusquedaProd(e.target.value)}
-                sx={{ mb: 2 }}
-              />
-              <Grid container spacing={1} sx={{ overflowY: 'auto', alignContent: 'flex-start', maxHeight: '50vh' }}>
-                {prodFiltrados.slice(0, 20).map(prod => (
-                  <Grid item xs={12} sm={6} md={4} key={prod._id}>
+        <Box sx={{ width: '100%', display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+          
+          {/* ÁREA IZQUIERDA: CATÁLOGO Y DATOS (STRETCHED) */}
+          <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            
+            {/* CABECERA: CLIENTE Y MESA */}
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Paper elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
+                <Typography variant="subtitle2" fontWeight={700} color="primary" sx={{ mb: 1.5 }}>DATOS DEL CLIENTE</Typography>
+                {!cliente ? (
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Autocomplete
+                      fullWidth options={clientes}
+                      getOptionLabel={(o) => o ? `${o.nombre} ${o.apellido}` : ''}
+                      value={cliente} onChange={(_, val) => setCliente(val)}
+                      renderInput={(params) => <TextField {...params} label="Buscar cliente..." size="small" />}
+                    />
+                    <Button variant="contained" size="small" onClick={() => setOpenModalCliente(true)} sx={{ bgcolor: '#1a1a2e', minWidth: 40 }}>+</Button>
+                  </Box>
+                ) : (
+                  <Box sx={{ p: 1, bgcolor: 'rgba(233,69,96,0.03)', borderRadius: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body2" fontWeight={700}>{cliente.nombre} {cliente.apellido}</Typography>
+                    <Button variant="text" color="error" size="small" onClick={() => setCliente(null)}>Cambiar</Button>
+                  </Box>
+                )}
+              </Paper>
+
+              <Paper elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
+                <Typography variant="subtitle2" fontWeight={700} color="#4caf50" sx={{ mb: 1.5 }}>MESA / COMANDA</Typography>
+                <Autocomplete
+                  fullWidth options={mesas}
+                  getOptionLabel={(o) => o ? `Mesa #${o.numero_mesa}` : ''}
+                  value={mesas.find(m => m._id === mesaSeleccionada) || null}
+                  onChange={(_, val) => { setMesaSeleccionada(val?._id || null); cargarComandaPorMesa(val?._id); }}
+                  renderInput={(params) => <TextField {...params} label="Elegir mesa..." size="small" />}
+                />
+              </Paper>
+            </Box>
+
+            {/* SECCIÓN DE PRODUCTOS: 100% DEL ESPACIO RESTANTE */}
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', minHeight: '75vh', flexGrow: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+                <Typography variant="h5" fontWeight={900} color="#1a1a2e">PRODUCTOS</Typography>
+                <TextField
+                  placeholder="Buscar por nombre..."
+                  variant="outlined" size="small" sx={{ width: { xs: '100%', md: '40%' } }}
+                  value={busquedaProd} onChange={e => setBusquedaProd(e.target.value)}
+                />
+              </Box>
+
+              {/* Filtro por Categorías */}
+              <Box sx={{ display: 'flex', gap: 1, mb: 3, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { height: 4 } }}>
+                {['todas', 'bebidas', 'postres', 'platos_principales', 'sopas', 'entradas', 'comidas_rapidas', 'adicionales'].map(cat => (
+                  <Chip 
+                    key={cat} 
+                    label={cat === 'todas' ? 'Todas' : cat.replace('_', ' ')} 
+                    onClick={() => setCategoria(cat)}
+                    color={categoria === cat ? 'primary' : 'default'}
+                    variant={categoria === cat ? 'filled' : 'outlined'}
+                    sx={{ textTransform: 'capitalize', fontWeight: 600 }}
+                  />
+                ))}
+              </Box>
+              
+              <Grid container spacing={1.5}>
+                {prodFiltrados.slice(0, 120).map(prod => (
+                  <Grid item xs={6} sm={4} md={3} lg={2} xl={1.2} key={prod._id}>
                     <Box
                       onClick={() => agregarProducto(prod)}
-                      sx={{ p: 1.5, border: '1px solid rgba(0,0,0,0.1)', borderRadius: 2, cursor: 'pointer', transition: 'all 0.2s', '&:hover': { borderColor: '#e94560', bgcolor: 'rgba(233,69,96,0.04)' } }}
+                      sx={{ p: 2, border: '1px solid #f0f0f0', borderRadius: 3, textAlign: 'center', bgcolor: '#fff', cursor: 'pointer', transition: 'all 0.2s', '&:hover': { borderColor: '#e94560', transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(233,69,96,0.1)' } }}
                     >
-                      <Typography variant="body2" fontWeight={700} noWrap>{prod.nombre}</Typography>
-                      <Typography variant="body2" color="#4caf50" fontWeight={600} mt={0.5}>
-                        {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(prod.precio)}
+                      <Typography variant="caption" fontWeight={700} display="block" noWrap sx={{ mb: 1 }}>{prod.nombre}</Typography>
+                      <Typography variant="body2" fontWeight={800} color="success.main" sx={{ bgcolor: '#edfaf0', py: 0.5, borderRadius: 1 }}>
+                        ${new Intl.NumberFormat('es-CO').format(prod.precio)}
                       </Typography>
                     </Box>
                   </Grid>
                 ))}
               </Grid>
             </Paper>
-          </Grid>
+          </Box>
 
-          <Grid item xs={12} md={5}>
-            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
-              <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Cliente {comandaId ? '(Comanda Vinculada)' : ''}</Typography>
-              <Autocomplete
-                options={clientes}
-                getOptionLabel={(o) => o ? `${o.nombre || ''} ${o.apellido || ''} ${o.numero_documento ? `(${o.numero_documento})` : ''}` : ''}
-                value={cliente}
-                onChange={(_, val) => setCliente(val)}
-                renderInput={(params) => <TextField {...params} label="Asignar Cliente (Opcional)" size="small" />}
-                sx={{ mb: 2 }}
-              />
-              <FormControl fullWidth size="small" sx={{ mb: 3 }}>
-                <InputLabel>Método de Pago</InputLabel>
-                <Select value={metodoPago} label="Método de Pago" onChange={e => setMetodoPago(e.target.value)}>
-                  {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-              <Divider sx={{ mb: 2 }} />
-              <Box sx={{ maxHeight: '35vh', overflowY: 'auto', mb: 2 }}>
+          {/* ÁREA DERECHA: RESUMEN (PEGA AL BORDE DERECHO) */}
+          <Box sx={{ width: 340, flexShrink: 0, position: 'sticky', top: 84 }}>
+            <Paper elevation={6} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(233,69,96,0.1)', bgcolor: '#fff', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 180px)' }}>
+              <Typography variant="h6" fontWeight={900} sx={{ mb: 2, borderBottom: '3px solid #e94560', pb: 1 }}>RESUMEN</Typography>
+              
+              <Box sx={{ flexGrow: 1, overflowY: 'auto', mb: 3, pr: 1 }}>
                 {pedidoActual.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary" textAlign="center">Caja vacía.</Typography>
+                  <Box sx={{ py: 10, textAlign: 'center', opacity: 0.5 }}>
+                    <ReceiptLongIcon sx={{ fontSize: 60, mb: 1, color: '#ccc' }} />
+                    <Typography variant="body2">Agregue productos</Typography>
+                  </Box>
                 ) : (
                   pedidoActual.map((item, idx) => (
-                    <Box key={item.uid || idx} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, pb: 1, borderBottom: '1px dashed #eee' }}>
-                      <Box sx={{ flex: 1, pr: 2 }}>
-                        <Typography variant="body2" fontWeight={600} noWrap>{item.nombre}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio)}
-                        </Typography>
+                    <Box key={item.uid || idx} sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, pb: 1, borderBottom: '1px solid #f9f9f9' }}>
+                      <Box sx={{ maxWidth: '75%' }}>
+                        <Typography variant="body2" fontWeight={700} display="block" sx={{ lineHeight: 1.2 }}>{item.nombre}</Typography>
+                        <Typography variant="caption" color="text.secondary">${new Intl.NumberFormat('es-CO').format(item.precio)}</Typography>
                       </Box>
-                      <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)}>
-                        <DeleteIcon fontSize="small" />
+                      <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)} sx={{ p: 0.5, bgcolor: '#fff0f0' }}>
+                        <DeleteIcon fontSize="inherit" />
                       </IconButton>
                     </Box>
                   ))
                 )}
               </Box>
-              <Box sx={{ bgcolor: '#1a1a2e', color: '#fff', p: 3, borderRadius: 2, textAlign: 'center', mb: 2 }}>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>TOTAL</Typography>
-                <Typography variant="h4" fontWeight={800}>
-                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalCaja)}
-                </Typography>
+
+              <Box sx={{ mt: 'auto' }}>
+                <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                  <InputLabel>Forma de Pago</InputLabel>
+                  <Select value={metodoPago} label="Forma de Pago" onChange={e => setMetodoPago(e.target.value)} sx={{ fontWeight: 700, borderRadius: 2 }}>
+                    {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
+                  </Select>
+                </FormControl>
+
+                <Box sx={{ bgcolor: '#1a1a2e', color: '#fff', p: 3, borderRadius: 3, textAlign: 'center', mb: 3, boxShadow: '0 8px 32px rgba(26,26,46,0.3)' }}>
+                  <Typography variant="caption" sx={{ opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1.5, fontSize: '0.6rem' }}>Total Neto</Typography>
+                  <Typography variant="h4" fontWeight={900} color="#e94560">
+                    ${new Intl.NumberFormat('es-CO').format(totalCaja)}
+                  </Typography>
+                </Box>
+
+                <Button
+                  fullWidth variant="contained" onClick={manejarFacturacion} disabled={pedidoActual.length === 0}
+                  sx={{ py: 2, background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 3, fontWeight: 800, fontSize: '1rem', letterSpacing: 1, boxShadow: '0 4px 15px rgba(233,69,96,0.4)' }}
+                >
+                  COBRAR AHORA
+                </Button>
               </Box>
-              <Button
-                fullWidth variant="contained" onClick={manejarFacturacion} disabled={pedidoActual.length === 0} startIcon={<PrintIcon />}
-                sx={{ py: 1.5, background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, fontWeight: 700 }}
-              >
-                Cobrar e Imprimir
-              </Button>
             </Paper>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       )}
 
       {/* TAB 1: VENTAS DE HOY */}
@@ -231,10 +401,14 @@ const FacturacionPage = () => {
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
           <TablaReporteFacturas
             facturas={facturas.filter(f => {
-              const hoy = new Date().toISOString().split('T')[0];
-              return new Date(f.createdAt).toISOString().split('T')[0] === hoy;
+              const d = new Date();
+              const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              const fechaFac = new Date(f.createdAt);
+              const facLocal = `${fechaFac.getFullYear()}-${String(fechaFac.getMonth() + 1).padStart(2, '0')}-${String(fechaFac.getDate()).padStart(2, '0')}`;
+              return facLocal === hoy;
             })}
             enReproduccion={reImprimir}
+            onDelete={handleDelete}
           />
         </Paper>
       )}
@@ -286,6 +460,7 @@ const FacturacionPage = () => {
               return match;
             })}
             enReproduccion={reImprimir}
+            onDelete={handleDelete}
           />
         </Paper>
       )}
@@ -368,16 +543,73 @@ const FacturacionPage = () => {
         </Box>
       )}
 
-      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+      {/* Modal Crear Cliente */}
+      <Dialog open={openModalCliente} onClose={() => setOpenModalCliente(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', color: '#fff', fontWeight: 700 }}>
+          Registrar Nuevo Cliente
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField fullWidth label="Nombre" value={formCliente.nombre} onChange={e => setFormCliente(p => ({ ...p, nombre: e.target.value }))} margin="normal" size="small"/>
+            <TextField fullWidth label="Apellido" value={formCliente.apellido} onChange={e => setFormCliente(p => ({ ...p, apellido: e.target.value }))} margin="normal" size="small"/>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              select
+              fullWidth
+              label="Documento"
+              value={formCliente.tipo_documento}
+              onChange={e => setFormCliente(p => ({ ...p, tipo_documento: e.target.value }))}
+              margin="normal"
+              size="small"
+              SelectProps={{ native: true }}
+            >
+              <option value=""></option>
+              {TIPOS_DOCUMENTO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </TextField>
+            <TextField fullWidth label="Número" value={formCliente.numero_documento} onChange={e => setFormCliente(p => ({ ...p, numero_documento: e.target.value }))} margin="normal" size="small"/>
+          </Box>
+          <TextField fullWidth label="Teléfono" value={formCliente.telefono} onChange={e => setFormCliente(p => ({ ...p, telefono: e.target.value }))} margin="normal" size="small"/>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setOpenModalCliente(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button onClick={guardarCliente} variant="contained" sx={{ borderRadius: 2, background: '#1a1a2e' }}>Guardar y Asignar</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <Alert severity={snack.severity} variant="filled" sx={{ borderRadius: 2 }}>{snack.msg}</Alert>
       </Snackbar>
+
+      {/* ── MODAL ELIMINAR CON CLAVE MAESTRA ── */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>Eliminar Factura</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 3 }}>
+            ¿Estás seguro de eliminar esta factura? <br/>
+            <strong>Se restituirá el stock de los productos facturados automáticamente.</strong><br/><br/>
+            Ingresa la <strong>Clave Maestra</strong> para confirmar:
+          </Typography>
+          <TextField 
+            fullWidth label="Clave Maestra" type="password" size="small" autoComplete="off"
+            value={masterKey} onChange={e => setMasterKey(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && confirmarEliminar()}
+            autoFocus
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDeleteDialogOpen(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button onClick={confirmarEliminar} variant="contained" color="error" sx={{ borderRadius: 2 }}>Confirmar Eliminar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
 
 // --- Subcomponente de Tabla para simplificar renderizado ---
-const TablaReporteFacturas = ({ facturas, enReproduccion }) => {
+const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
   const sumaTotal = facturas.reduce((sum, f) => sum + (f.total_pagado || 0), 0);
+  const [facturaDetalle, setFacturaDetalle] = useState(null);
 
   return (
     <>
@@ -427,7 +659,23 @@ const TablaReporteFacturas = ({ facturas, enReproduccion }) => {
                     </Typography>
                   </TableCell>
                   <TableCell align="center">
-                    <Button variant="text" size="small" startIcon={<PrintIcon />} onClick={() => enReproduccion(f)}>Re-Imprimir</Button>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+                      <Tooltip title="Ver Detalles">
+                        <IconButton size="small" sx={{ color: '#0f3460' }} onClick={() => setFacturaDetalle(f)}>
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Re-Imprimir">
+                        <IconButton size="small" color="primary" onClick={() => enReproduccion(f)}>
+                          <PrintIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Eliminar">
+                        <IconButton size="small" color="error" onClick={() => onDelete(f._id)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))
@@ -444,6 +692,101 @@ const TablaReporteFacturas = ({ facturas, enReproduccion }) => {
           </Typography>
         </Box>
       </Box>
+
+      {/* ── MODAL DETALLE DE FACTURA ── */}
+      <Dialog open={!!facturaDetalle} onClose={() => setFacturaDetalle(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        {facturaDetalle && (
+          <>
+            <DialogTitle sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <ReceiptLongIcon />
+              Detalle Factura #{facturaDetalle.numero_factura}
+            </DialogTitle>
+            <DialogContent sx={{ pt: 3 }}>
+              {/* Info principal */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700}>FECHA</Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    {new Date(facturaDetalle.createdAt).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}
+                  </Typography>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700}>MÉTODO DE PAGO</Typography>
+                  <Box mt={0.5}>
+                    <Chip label={facturaDetalle.metodo_pago} size="small" sx={{ textTransform: 'capitalize' }} />
+                  </Box>
+                </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary" fontWeight={700}>CLIENTE</Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    {facturaDetalle.id_cliente
+                      ? `${facturaDetalle.id_cliente.nombre} ${facturaDetalle.id_cliente.apellido}`
+                      : 'Consumidor Final'}
+                  </Typography>
+                  {facturaDetalle.id_cliente?.numero_documento && (
+                    <Typography variant="caption" color="text.secondary">
+                      {facturaDetalle.id_cliente.numero_documento}
+                    </Typography>
+                  )}
+                </Box>
+                {facturaDetalle.id_mesa && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" fontWeight={700}>MESA</Typography>
+                    <Typography variant="body2" fontWeight={600}>{facturaDetalle.id_mesa.nombre || `Mesa ${facturaDetalle.id_mesa.numero}`}</Typography>
+                  </Box>
+                )}
+              </Box>
+
+              {/* Productos */}
+              <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5, color: '#1a1a2e' }}>PRODUCTOS FACTURADOS</Typography>
+              <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 2, mb: 2 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.03)' }}>
+                      <TableCell sx={{ fontWeight: 700 }}>Producto</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }} align="center">Cant.</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }} align="right">P. Unit.</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }} align="right">Subtotal</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(facturaDetalle.detalle_pedido || []).map((item, i) => (
+                      <TableRow key={i}>
+                        <TableCell>{item.nombre || item.id_plato?.nombre || item.id_producto?.nombre || '—'}</TableCell>
+                        <TableCell align="center">{item.cantidad}</TableCell>
+                        <TableCell align="right">
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio_unitario || 0)}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography fontWeight={700}>
+                            {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format((item.precio_unitario || 0) * (item.cantidad || 1))}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {/* Total */}
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Box sx={{ bgcolor: '#1a1a2e', color: '#fff', px: 3, py: 1.5, borderRadius: 2, textAlign: 'right' }}>
+                  <Typography variant="caption" sx={{ opacity: 0.7 }}>TOTAL PAGADO</Typography>
+                  <Typography variant="h5" fontWeight={900} color="#e94560">
+                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaDetalle.total_pagado || 0)}
+                  </Typography>
+                </Box>
+              </Box>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 3 }}>
+              <Button onClick={() => setFacturaDetalle(null)} variant="outlined" sx={{ borderRadius: 2 }}>Cerrar</Button>
+              <Button onClick={() => { enReproduccion(facturaDetalle); setFacturaDetalle(null); }} variant="contained" startIcon={<PrintIcon />} sx={{ borderRadius: 2, background: '#0f3460' }}>
+                Re-Imprimir
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </>
   );
 };

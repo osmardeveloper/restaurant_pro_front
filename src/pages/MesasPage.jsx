@@ -16,6 +16,7 @@ import TableBarIcon from '@mui/icons-material/TableBar';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { mesaService, productoService, comandaService, clienteService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const estadoConfig = {
   'disponible':    { label: 'Disponible',    color: 'success' },
@@ -32,6 +33,7 @@ const TIPOS_DOCUMENTO = [
 const FORM_INICIAL = { numero_mesa: '', estado: 'disponible', pedido_actual: [], comanda_id: null };
 
 const MesasPage = () => {
+  const { usuario } = useAuth();
   const navigate = useNavigate();
   const [mesas, setMesas]               = useState([]);
   const [platos, setPlatos]             = useState([]);
@@ -39,7 +41,7 @@ const MesasPage = () => {
   
   const [loading, setLoading]           = useState(false);
   const [dialogOpen, setDialogOpen]     = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, numero: '' });
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, numero: '', masterKey: '' });
   const [editId, setEditId]             = useState(null);
   
   const [form, setForm]                 = useState(FORM_INICIAL);
@@ -142,15 +144,27 @@ const MesasPage = () => {
     if (!validar()) return;
     try {
       if (editId) {
+        // 1. Actualizar datos básicos de la mesa (Núm/Estado)
         const datosMesa = { numero_mesa: Number(form.numero_mesa), estado: form.estado };
         await mesaService.update(editId, datosMesa);
         
+        // 2. Gestionar la Comanda (Pedido)
         if (form.comanda_id) {
-           await comandaService.update(form.comanda_id, { 
-             ids_productos: form.pedido_actual.map(p => p._id),
-             id_cliente: selectedCliente ? selectedCliente._id : null
-           });
+          // Si ya existe comanda, actualizar productos y cliente
+          await comandaService.update(form.comanda_id, { 
+            ids_productos: form.pedido_actual.map(p => p._id),
+            id_cliente: selectedCliente ? selectedCliente._id : null
+          });
+        } else if (form.pedido_actual.length > 0) {
+          // Si NO existe comanda pero se agregaron productos, CREARLA
+          await comandaService.create({
+            id_mesa: editId,
+            ids_productos: form.pedido_actual.map(p => p._id),
+            id_cliente: selectedCliente ? selectedCliente._id : null,
+            estado: 'abierta'
+          });
         }
+        
         showSnack('Mesa y pedido actualizados correctamente.');
       } 
       setDialogOpen(false);
@@ -174,13 +188,17 @@ const MesasPage = () => {
   };
 
   const confirmarEliminar = async () => {
+    if (!deleteDialog.masterKey) {
+      showSnack('Ingresa la clave maestra.', 'warning');
+      return;
+    }
     try {
-      await mesaService.remove(deleteDialog.id);
+      await mesaService.remove(deleteDialog.id, deleteDialog.masterKey);
       showSnack('Mesa eliminada correctamente.');
-      setDeleteDialog({ open: false, id: null, numero: '' });
+      setDeleteDialog({ open: false, id: null, numero: '', masterKey: '' });
       fetchData();
-    } catch {
-      showSnack('Error al eliminar la mesa.', 'error');
+    } catch (err) {
+      showSnack(err.response?.data?.message || 'Clave incorrecta o error al eliminar la mesa.', 'error');
     }
   };
 
@@ -201,9 +219,11 @@ const MesasPage = () => {
             </Typography>
           </Box>
         </Box>
-        <Button id="crear-mesa-btn" variant="contained" startIcon={<AddIcon />} onClick={abrirCrear} sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, px: 3, boxShadow: '0 4px 14px rgba(233,69,96,0.35)' }}>
-          Nueva Mesa
-        </Button>
+        {usuario?.rol === 'admin' && (
+          <Button id="crear-mesa-btn" variant="contained" startIcon={<AddIcon />} onClick={abrirCrear} sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, px: 3, boxShadow: '0 4px 14px rgba(233,69,96,0.35)' }}>
+            Nueva Mesa
+          </Button>
+        )}
       </Box>
 
       {loading ? (
@@ -244,7 +264,9 @@ const MesasPage = () => {
                   </Box>
                   <Box>
                     <Tooltip title="Editar Estado y Comanda"><IconButton id={`edit-mesa-${mesa._id}`} size="small" onClick={() => abrirEditar(mesa)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                    <Tooltip title="Eliminar"><IconButton id={`delete-mesa-${mesa._id}`} size="small" onClick={() => setDeleteDialog({ open: true, id: mesa._id, numero: mesa.numero_mesa })} sx={{ color: '#e94560' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                    {usuario?.rol === 'admin' && (
+                      <Tooltip title="Eliminar"><IconButton id={`delete-mesa-${mesa._id}`} size="small" onClick={() => setDeleteDialog({ open: true, id: mesa._id, numero: mesa.numero_mesa })} sx={{ color: '#e94560' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                    )}
                   </Box>
                 </CardActions>
               </Card>
@@ -391,16 +413,27 @@ const MesasPage = () => {
       </Dialog>
 
       {/* Confirmar Eliminar Mesa */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, numero: '' })} PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle fontWeight={700}>¿Eliminar mesa?</DialogTitle>
-        <DialogContent><Typography>¿Estás seguro de eliminar la <strong>Mesa #{deleteDialog.numero}</strong>?</Typography></DialogContent>
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, numero: '', masterKey: '' })} PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>Eliminar Mesa</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 3 }}>
+            ¿Estás seguro de eliminar la <strong>Mesa #{deleteDialog.numero}</strong>? Esta acción es irreversible.
+            Ingresa la <strong>Clave Maestra</strong> para confirmar:
+          </Typography>
+          <TextField 
+            fullWidth label="Clave Maestra" type="password" size="small" autoComplete="off"
+            value={deleteDialog.masterKey} onChange={e => setDeleteDialog(p => ({ ...p, masterKey: e.target.value }))}
+            onKeyPress={(e) => e.key === 'Enter' && confirmarEliminar()}
+            autoFocus
+          />
+        </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-          <Button onClick={() => setDeleteDialog({ open: false, id: null, numero: '' })} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
-          <Button id="confirm-delete-mesa-btn" onClick={confirmarEliminar} variant="contained" color="error" sx={{ borderRadius: 2 }}>Eliminar</Button>
+          <Button onClick={() => setDeleteDialog({ open: false, id: null, numero: '', masterKey: '' })} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button id="confirm-delete-mesa-btn" onClick={confirmarEliminar} variant="contained" color="error" sx={{ borderRadius: 2 }}>Confirmar Eliminar</Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <Alert severity={snack.severity} variant="filled" sx={{ borderRadius: 2 }}>{snack.msg}</Alert>
       </Snackbar>
     </Box>

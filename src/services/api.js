@@ -38,7 +38,7 @@ export const usuarioService = {
   getById: (id)        => api.get(`/usuarios/${id}`),
   create:  (datos)     => api.post('/usuarios', datos),
   update:  (id, datos) => api.put(`/usuarios/${id}`, datos),
-  remove:  (id)        => api.delete(`/usuarios/${id}`),
+  remove:  (id, masterKey) => api.delete(`/usuarios/${id}`, { headers: { 'x-master-key': masterKey } }),
 };
 
 export const productoService = {
@@ -46,7 +46,7 @@ export const productoService = {
   getById: (id)       => api.get(`/productos/${id}`),
   create:  (datos)    => api.post('/productos', datos),
   update:  (id, datos) => api.put(`/productos/${id}`, datos),
-  remove:  (id)       => api.delete(`/productos/${id}`),
+  remove:  (id, masterKey) => api.delete(`/productos/${id}`, { headers: { 'x-master-key': masterKey } }),
 };
 
 export const mesaService = {
@@ -54,7 +54,7 @@ export const mesaService = {
   getById: (id)        => api.get(`/mesas/${id}`),
   create:  (datos)     => api.post('/mesas', datos),
   update:  (id, datos) => api.put(`/mesas/${id}`, datos),
-  remove:  (id)        => api.delete(`/mesas/${id}`),
+  remove:  (id, masterKey) => api.delete(`/mesas/${id}`, { headers: { 'x-master-key': masterKey } }),
 };
 
 export const clienteService = {
@@ -62,7 +62,7 @@ export const clienteService = {
   getById: (id)        => api.get(`/clientes/${id}`),
   create:  (datos)     => api.post('/clientes', datos),
   update:  (id, datos) => api.put(`/clientes/${id}`, datos),
-  remove:  (id)        => api.delete(`/clientes/${id}`),
+  remove:  (id, masterKey) => api.delete(`/clientes/${id}`, { headers: { 'x-master-key': masterKey } }),
 };
 
 export const comandaService = {
@@ -76,13 +76,24 @@ export const facturacionService = {
   getAll:  ()      => api.get('/facturacion'),
   getById: (id)    => api.get(`/facturacion/${id}`),
   create:  (datos) => api.post('/facturacion', datos),
+  remove:  (id, masterKey) => api.delete(`/facturacion/${id}`, { headers: { 'x-master-key': masterKey } }),
 };
 
 export const gastoService = {
   getAll: () => api.get('/gastos'),
   create: (datos) => api.post('/gastos', datos),
   update: (id, datos) => api.put(`/gastos/${id}`, datos),
-  remove: (id) => api.delete(`/gastos/${id}`),
+  remove: (id, masterKey) => api.delete(`/gastos/${id}`, { headers: { 'x-master-key': masterKey } }),
+};
+
+export const configuracionService = {
+  getByUser: (id_usuario) => api.get(`/configuraciones/usuario/${id_usuario}`),
+  save: (datos) => api.post('/configuraciones', datos),
+};
+
+export const movimientoService = {
+  getAll: (params) => api.get('/inventario', { params }),
+  create: (datos)  => api.post('/inventario', datos),
 };
 
 export default api;

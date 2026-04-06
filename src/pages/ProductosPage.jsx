@@ -16,6 +16,7 @@ import AttachMoneyIcon    from '@mui/icons-material/AttachMoney';
 import SearchIcon         from '@mui/icons-material/Search';
 import InventoryIcon      from '@mui/icons-material/Inventory';
 import { productoService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const TIPOS_PRODUCTO = [
   { value: 'bebidas', label: 'Bebidas' },
@@ -30,14 +31,16 @@ const TIPOS_PRODUCTO = [
 const FORM_INICIAL = { nombre: '', descripcion: '', tipo: 'platos_principales', precio: '', cantidad: '' };
 
 const ProductosPage = () => {
+  const { usuario } = useAuth();
   const [productos, setProductos]       = useState([]);
   const [loading, setLoading]           = useState(false);
   const [dialogOpen, setDialogOpen]     = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, nombre: '' });
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, nombre: '', masterKey: '' });
   const [editId, setEditId]             = useState(null);
   const [form, setForm]                 = useState(FORM_INICIAL);
   const [formErrors, setFormErrors]     = useState({});
   const [busqueda, setBusqueda]         = useState('');
+  const [categoria, setCategoria]       = useState('todas');
   const [snack, setSnack]               = useState({ open: false, msg: '', severity: 'success' });
 
   const [loadingGuardar, setLoadingGuardar] = useState(false);
@@ -125,13 +128,17 @@ const ProductosPage = () => {
   };
 
   const confirmarEliminar = async () => {
+    if (!deleteDialog.masterKey) {
+      showSnack('Ingresa la clave maestra.', 'warning');
+      return;
+    }
     try {
-      await productoService.remove(deleteDialog.id);
+      await productoService.remove(deleteDialog.id, deleteDialog.masterKey);
       showSnack('Producto eliminado correctamente.');
-      setDeleteDialog({ open: false, id: null, nombre: '' });
+      setDeleteDialog({ open: false, id: null, nombre: '', masterKey: '' });
       fetchProductos();
-    } catch {
-      showSnack('Error al eliminar el producto.', 'error');
+    } catch (err) {
+      showSnack(err.response?.data?.message || 'Clave incorrecta o error al eliminar el producto.', 'error');
     }
   };
 
@@ -154,14 +161,22 @@ const ProductosPage = () => {
       field: 'acciones', headerName: 'Acciones', width: 110, sortable: false,
       renderCell: ({ row }) => (
         <Box sx={{ display: 'flex', gap: 0.5 }}>
-          <Tooltip title="Editar"><IconButton size="small" onClick={() => abrirEditar(row)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
-          <Tooltip title="Eliminar"><IconButton size="small" onClick={() => setDeleteDialog({ open: true, id: row._id, nombre: row.nombre })} sx={{ color: '#e94560' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+          {usuario?.rol === 'admin' && (
+            <>
+              <Tooltip title="Editar"><IconButton size="small" onClick={() => abrirEditar(row)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+              <Tooltip title="Eliminar"><IconButton size="small" onClick={() => setDeleteDialog({ open: true, id: row._id, nombre: row.nombre })} sx={{ color: '#e94560' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+            </>
+          )}
         </Box>
       ),
     },
   ];
 
-  const filteredRows = productos.filter(p => p.nombre.toLowerCase().includes(busqueda.toLowerCase()));
+  const filteredRows = productos.filter(p => {
+    const matchBusqueda = p.nombre.toLowerCase().includes(busqueda.toLowerCase());
+    const matchCategoria = categoria === 'todas' || p.tipo === categoria;
+    return matchBusqueda && matchCategoria;
+  });
 
   return (
     <Box>
@@ -185,10 +200,26 @@ const ProductosPage = () => {
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
             sx={{ width: 250, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
           />
-          <Button variant="contained" startIcon={<AddIcon />} onClick={abrirCrear} sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, px: 3 }}>
-            Nuevo Producto
-          </Button>
+          {usuario?.rol === 'admin' && (
+            <Button variant="contained" startIcon={<AddIcon />} onClick={abrirCrear} sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, px: 3 }}>
+              Nuevo Producto
+            </Button>
+          )}
         </Box>
+      </Box>
+      
+      {/* Filtro por Categorías */}
+      <Box sx={{ display: 'flex', gap: 1, mb: 3, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { height: 4 } }}>
+        {['todas', ...TIPOS_PRODUCTO.map(t => t.value)].map(cat => (
+          <Chip 
+            key={cat} 
+            label={cat === 'todas' ? 'Todas' : TIPOS_PRODUCTO.find(t => t.value === cat)?.label} 
+            onClick={() => setCategoria(cat)}
+            color={categoria === cat ? 'primary' : 'default'}
+            variant={categoria === cat ? 'filled' : 'outlined'}
+            sx={{ textTransform: 'capitalize', fontWeight: 600 }}
+          />
+        ))}
       </Box>
 
       <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
@@ -231,7 +262,11 @@ const ProductosPage = () => {
           
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField fullWidth label="Precio" value={form.precio} onChange={e => setForm(p => ({ ...p, precio: e.target.value }))} margin="normal" error={!!formErrors.precio} helperText={formErrors.precio} InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
-            <TextField fullWidth label="Cantidad (Stock)" value={form.cantidad} onChange={e => setForm(p => ({ ...p, cantidad: e.target.value }))} margin="normal" error={!!formErrors.cantidad} helperText={formErrors.cantidad} />
+            <TextField 
+              fullWidth label="Stock Actual" value={form.cantidad} margin="normal" 
+              disabled helperText="Ajuste vía módulo de Inventario"
+              InputProps={{ readOnly: true }}
+            />
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
@@ -243,16 +278,27 @@ const ProductosPage = () => {
       </Dialog>
 
       {/* Confirmar eliminar */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, nombre: '' })}>
-        <DialogTitle>¿Eliminar producto?</DialogTitle>
-        <DialogContent><Typography>¿Seguro de que quieres eliminar <strong>{deleteDialog.nombre}</strong>?</Typography></DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setDeleteDialog({ open: false, id: null, nombre: '' })}>Cancelar</Button>
-          <Button onClick={confirmarEliminar} variant="contained" color="error">Eliminar</Button>
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, nombre: '', masterKey: '' })} PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>Eliminar Producto</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 3 }}>
+            ¿Estás seguro de eliminar <strong>{deleteDialog.nombre}</strong>? Esta acción es irreversible.
+            Ingresa la <strong>Clave Maestra</strong> para confirmar:
+          </Typography>
+          <TextField 
+            fullWidth label="Clave Maestra" type="password" size="small" autoComplete="off"
+            value={deleteDialog.masterKey} onChange={e => setDeleteDialog(p => ({ ...p, masterKey: e.target.value }))}
+            onKeyPress={(e) => e.key === 'Enter' && confirmarEliminar()}
+            autoFocus
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button onClick={() => setDeleteDialog({ open: false, id: null, nombre: '', masterKey: '' })} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button onClick={confirmarEliminar} variant="contained" color="error" sx={{ borderRadius: 2 }}>Confirmar Eliminar</Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <Alert severity={snack.severity} variant="filled" sx={{ borderRadius: 2 }}>{snack.msg}</Alert>
       </Snackbar>
     </Box>
