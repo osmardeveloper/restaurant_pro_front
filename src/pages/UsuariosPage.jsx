@@ -251,7 +251,7 @@ const UsuariosPage = () => {
         <DialogContent sx={{ pt: 3, pb: 2, minHeight: 400 }}>
           {tabIndex === 0 && (
             <Box>
-              <TextField fullWidth id="usuario-nombre" label="Nombre Completo" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} margin="normal" error={!!formErrors.nombre} helperText={formErrors.nombre} />
+              <TextField fullWidth id="usuario-nombre" label="Usuario" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} margin="normal" error={!!formErrors.nombre} helperText={formErrors.nombre} />
               <TextField fullWidth id="usuario-password" label={editId ? 'Nueva contraseña (vacío = no cambiar)' : 'Contraseña'} type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} margin="normal" error={!!formErrors.password} helperText={formErrors.password} />
               <FormControl fullWidth margin="normal">
                 <InputLabel id="rol-label">Rol del Sistema</InputLabel>
