@@ -297,19 +297,20 @@ const MesasPage = () => {
               </Grid>
               
               {/* Nuevo: Selector de Cliente al Editar Comanda */}
-              <Grid item xs={10} sm={5}>
+              <Grid item xs={12} sm={7} md={8}>
                 <Autocomplete
                   options={clientes}
+                  style={{width: "30vw"}}
                   getOptionLabel={(o) => o ? `${o.nombre || ''} ${o.apellido || ''} ${o.numero_documento ? `(${o.numero_documento})` : ''}`.trim() : ''}
                   value={selectedCliente}
                   onChange={(_, val) => setSelectedCliente(val)}
-                  renderInput={(params) => <TextField {...params} label="Vincular Cliente (Opcional)" size="small" />}
+                  renderInput={(params) => <TextField {...params} fullWidth label="Vincular Cliente (Opcional)" size="small" />}
                   noOptionsText="Cliente no encontrado"
                 />
               </Grid>
-              <Grid item xs={2} sm={1}>
+              <Grid item xs={12} sm={5} md={4} lg={1} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}>
                 <Tooltip title="Nuevo Cliente">
-                  <Button fullWidth variant="outlined" sx={{ height: '100%', borderRadius: 2 }} onClick={() => setOpenModalCliente(true)}>
+                  <Button variant="outlined" sx={{ minWidth: 0, height: 40, borderRadius: 2 }} onClick={() => setOpenModalCliente(true)}>
                     <PersonAddIcon />
                   </Button>
                 </Tooltip>

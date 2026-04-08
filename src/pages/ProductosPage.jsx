@@ -28,7 +28,7 @@ const TIPOS_PRODUCTO = [
   { value: 'adicionales', label: 'Adicionales' },
 ];
 
-const FORM_INICIAL = { nombre: '', descripcion: '', tipo: 'platos_principales', precio: '', cantidad: '' };
+const FORM_INICIAL = { nombre: '', descripcion: '', tipo: 'platos_principales', precio: '', cantidad: '', costo: '' };
 
 const ProductosPage = () => {
   const { usuario } = useAuth();
@@ -77,6 +77,11 @@ const ProductosPage = () => {
     if (cantidadStr !== '' && isNaN(Number(cantidadStr))) {
       errors.cantidad = 'Debe ser un número válido.';
     }
+
+    const costoStr = String(form.costo || '').trim();
+    if (costoStr !== '' && isNaN(Number(costoStr))) {
+      errors.costo = 'Debe ser un número válido.';
+    }
     
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -94,7 +99,8 @@ const ProductosPage = () => {
       descripcion: row.descripcion || '', 
       tipo: row.tipo,
       precio: String(row.precio),
-      cantidad: row.cantidad !== undefined ? String(row.cantidad) : ''
+      cantidad: row.cantidad !== undefined ? String(row.cantidad) : '',
+      costo: row.costo !== undefined && row.costo !== null ? String(row.costo) : ''
     }); 
     setFormErrors({}); 
     setDialogOpen(true); 
@@ -108,7 +114,8 @@ const ProductosPage = () => {
       const datos = { 
         ...form, 
         precio: Number(String(form.precio).trim()), 
-        cantidad: form.cantidad ? Number(String(form.cantidad).trim()) : 0 
+        cantidad: form.cantidad ? Number(String(form.cantidad).trim()) : 0,
+        costo: form.costo ? Number(String(form.costo).trim()) : null
       };
       
       if (editId) { 
@@ -152,6 +159,10 @@ const ProductosPage = () => {
     { 
       field: 'precio', headerName: 'Precio', width: 110,
       renderCell: ({ value }) => <Typography fontWeight={600}>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value)}</Typography>
+    },
+    { 
+      field: 'costo', headerName: 'Costo', width: 110,
+      renderCell: ({ value }) => <Typography fontWeight={600}>{value ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value) : '-'}</Typography>
     },
     { 
       field: 'cantidad', headerName: 'Stock', width: 90,
@@ -262,12 +273,14 @@ const ProductosPage = () => {
           
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField fullWidth label="Precio" value={form.precio} onChange={e => setForm(p => ({ ...p, precio: e.target.value }))} margin="normal" error={!!formErrors.precio} helperText={formErrors.precio} InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
-            <TextField 
-              fullWidth label="Stock Actual" value={form.cantidad} margin="normal" 
-              disabled helperText="Ajuste vía módulo de Inventario"
-              InputProps={{ readOnly: true }}
-            />
+            <TextField fullWidth label="Costo (Opcional)" value={form.costo} onChange={e => setForm(p => ({ ...p, costo: e.target.value }))} margin="normal" error={!!formErrors.costo} helperText={formErrors.costo || ''} InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
           </Box>
+
+          <TextField 
+            fullWidth label="Stock Actual" value={form.cantidad} margin="normal" 
+            disabled helperText="Ajuste vía módulo de Inventario"
+            InputProps={{ readOnly: true }}
+          />
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
           <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>

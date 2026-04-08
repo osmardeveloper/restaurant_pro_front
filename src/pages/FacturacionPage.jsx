@@ -21,6 +21,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import TableBarIcon from '@mui/icons-material/TableBar';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { productoService, clienteService, facturacionService, mesaService, comandaService } from '../services/api';
 
 const METODOS_PAGO = [
@@ -75,6 +76,11 @@ const FacturacionPage = () => {
   const [filtroGeneral, setFiltroGeneral] = useState('');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
+  
+  // Estados para pestaña de Utilidad
+  const [fechaUtilDesde, setFechaUtilDesde] = useState('');
+  const [fechaUtilHasta, setFechaUtilHasta] = useState('');
+  const [productosSeleccionados, setProductosSeleccionados] = useState([]);
 
   const showSnack = (msg, severity = 'success') => setSnack({ open: true, msg, severity });
 
@@ -140,6 +146,80 @@ const FacturacionPage = () => {
     }
   };
 
+  // -------- LOGICA PESTAÑA UTILIDAD --------
+  const calcularUtilidades = useMemo(() => {
+    let facturasFiltradasPorFecha = facturas;
+
+    // Filtrar por rango de fechas
+    if (fechaUtilDesde) {
+      facturasFiltradasPorFecha = facturasFiltradasPorFecha.filter(f =>
+        new Date(f.createdAt) >= new Date(fechaUtilDesde + 'T00:00:00')
+      );
+    }
+    if (fechaUtilHasta) {
+      facturasFiltradasPorFecha = facturasFiltradasPorFecha.filter(f =>
+        new Date(f.createdAt) <= new Date(fechaUtilHasta + 'T23:59:59')
+      );
+    }
+
+    const facturaMap = {};
+
+    facturasFiltradasPorFecha.forEach(factura => {
+      const facturaId = factura._id;
+      const fechaFactura = new Date(factura.createdAt);
+      const facturaFecha = fechaFactura.toLocaleDateString('es-CO');
+      const facturaHora = fechaFactura.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+
+      if (!facturaMap[facturaId]) {
+        facturaMap[facturaId] = {
+          id: facturaId,
+          factura_numero: factura.numero_factura,
+          factura_fecha: facturaFecha,
+          factura_hora: facturaHora,
+          productos: new Set(),
+          cantidad: 0,
+          total_venta: 0,
+          total_costo: 0,
+        };
+      }
+
+      factura.detalle_pedido?.forEach(item => {
+        const productoId = String(item.id_producto?._id || item.id_producto);
+        if (productosSeleccionados.length > 0 && !productosSeleccionados.includes(productoId)) {
+          return;
+        }
+
+        const cantidad = item.cantidad || 1;
+        const costoRegistrado = item.costo ?? null;
+        const productoActual = platos.find(p => p._id === productoId);
+        const costoUnitario = costoRegistrado !== null && costoRegistrado !== undefined
+          ? costoRegistrado
+          : productoActual?.costo ?? 0;
+        const precioUnitario = item.precio || 0;
+
+        facturaMap[facturaId].productos.add(item.nombre || 'Producto');
+        facturaMap[facturaId].cantidad += cantidad;
+        facturaMap[facturaId].total_venta += precioUnitario * cantidad;
+        facturaMap[facturaId].total_costo += costoUnitario * cantidad;
+      });
+    });
+
+    return Object.values(facturaMap)
+      .filter(f => f.cantidad > 0)
+      .map(f => ({
+        ...f,
+        productos_label: f.productos.size === 0 ? 'Sin productos' : f.productos.size === 1 ? [...f.productos][0] : `${f.productos.size} productos`,
+        costo_unitario: f.cantidad > 0 ? f.total_costo / f.cantidad : 0,
+        utilidad_bruta: f.total_venta - f.total_costo,
+        margen_utilidad: f.total_venta > 0 ? ((f.total_venta - f.total_costo) / f.total_venta * 100).toFixed(2) : 0,
+      }))
+      .sort((a, b) => b.utilidad_bruta - a.utilidad_bruta);
+  }, [facturas, fechaUtilDesde, fechaUtilHasta, productosSeleccionados, platos]);
+
+  const totalUtilidad = useMemo(() => {
+    return calcularUtilidades.reduce((sum, p) => sum + p.utilidad_bruta, 0);
+  }, [calcularUtilidades]);
+
   // -------- LOGICA TAB 0: CAJA --------
   const totalCaja = pedidoActual.reduce((acc, curr) => acc + (curr.precio || 0), 0);
   const prodFiltrados = platos.filter(p => {
@@ -166,12 +246,16 @@ const FacturacionPage = () => {
         metodo_pago: metodoPago,
         total_pagado: totalCaja,
         id_cliente: cliente?._id || null,
-        detalle_pedido: pedidoActual.map(p => ({
-          id_producto: p._id,
-          nombre: p.nombre,
-          precio: p.precio,
-          cantidad: 1
-        })),
+        detalle_pedido: pedidoActual.map(p => {
+          const productoActual = platos.find(x => x._id === p._id);
+          return {
+            id_producto: p._id,
+            nombre: p.nombre,
+            precio: p.precio,
+            costo: p.costo !== undefined && p.costo !== null ? p.costo : productoActual?.costo ?? null,
+            cantidad: 1
+          };
+        }),
         id_comanda: idComandaVinculada
       };
 
@@ -257,6 +341,7 @@ const FacturacionPage = () => {
           <Tab icon={<PointOfSaleIcon />} label="Punto de Caja" iconPosition="start" />
           <Tab icon={<TodayIcon />} label="Ventas de Hoy" iconPosition="start" />
           <Tab icon={<AssessmentIcon />} label="Listado General" iconPosition="start" />
+          <Tab icon={<TrendingUpIcon />} label="Utilidad" iconPosition="start" />
         </Tabs>
       </Box>
 
@@ -291,10 +376,26 @@ const FacturacionPage = () => {
               <Paper elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
                 <Typography variant="subtitle2" fontWeight={700} color="#4caf50" sx={{ mb: 1.5 }}>MESA / COMANDA</Typography>
                 <Autocomplete
-                  fullWidth options={mesas}
+                  fullWidth
+                  options={mesas}
                   getOptionLabel={(o) => o ? `Mesa #${o.numero_mesa}` : ''}
+                  getOptionDisabled={(o) => !(o.pedido_actual?.ids_productos?.length > 0)}
                   value={mesas.find(m => m._id === mesaSeleccionada) || null}
                   onChange={(_, val) => { setMesaSeleccionada(val?._id || null); cargarComandaPorMesa(val?._id); }}
+                  renderOption={(props, option) => {
+                    const tienePedido = option.pedido_actual?.ids_productos?.length > 0;
+                    return (
+                      <Box component="li" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }} {...props}>
+                        <Typography>{`Mesa #${option.numero_mesa}`}</Typography>
+                        <Chip
+                          label={tienePedido ? 'Con pedido' : 'Libre'}
+                          size="small"
+                          color={tienePedido ? 'success' : 'default'}
+                          sx={{ textTransform: 'none', ml: 1 }}
+                        />
+                      </Box>
+                    );
+                  }}
                   renderInput={(params) => <TextField {...params} label="Elegir mesa..." size="small" />}
                 />
               </Paper>
@@ -462,6 +563,131 @@ const FacturacionPage = () => {
             enReproduccion={reImprimir}
             onDelete={handleDelete}
           />
+        </Paper>
+      )}
+
+      {/* TAB 3: ANÁLISIS DE UTILIDAD */}
+      {tab === 3 && (
+        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={2}>
+              <TextField
+                fullWidth size="small" label="Desde" type="date" InputLabelProps={{ shrink: true }}
+                value={fechaUtilDesde} onChange={e => setFechaUtilDesde(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <TextField
+                fullWidth size="small" label="Hasta" type="date" InputLabelProps={{ shrink: true }}
+                value={fechaUtilHasta} onChange={e => setFechaUtilHasta(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={10}>
+              <Autocomplete
+                multiple
+                options={platos}
+                style={{width: '30vw'}}
+                getOptionLabel={(o) => o.nombre || ''}
+                value={platos.filter(p => productosSeleccionados.includes(p._id))}
+                onChange={(_, val) => setProductosSeleccionados(val.map(v => v._id))}
+                renderInput={(params) => <TextField {...params} fullWidth size="small" label="Filtrar por productos (opcional)" />}
+                disableCloseOnSelect
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Button fullWidth variant="outlined" color="error" onClick={() => { setFechaUtilDesde(''); setFechaUtilHasta(''); setProductosSeleccionados([]); }}>
+                Limpiar Filtros
+              </Button>
+            </Grid>
+          </Grid>
+
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ bgcolor: '#1a1a2e' }}>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Factura</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Fecha / Hora</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Productos</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Cantidad</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', textAlign: 'right' }}>Total Venta</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', textAlign: 'right' }}>Costo Unit.</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', textAlign: 'right' }}>Total Costo</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', textAlign: 'right' }}>Utilidad Bruta</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 'bold', textAlign: 'right' }}>Margen %</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {calcularUtilidades.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                      <AssessmentIcon sx={{ fontSize: 40, opacity: 0.3, display: 'block', mx: 'auto', mb: 1 }} />
+                      No hay datos para el período seleccionado.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  calcularUtilidades.map((prod) => (
+                    <TableRow key={prod.id} hover>
+                      <TableCell>
+                        <Typography fontWeight="bold">#{prod.factura_numero}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography>{prod.factura_fecha}</Typography>
+                        <Typography variant="caption" color="text.secondary">{prod.factura_hora}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography fontWeight="bold">{prod.productos_label}</Typography>
+                      </TableCell>
+                      <TableCell align="center">{prod.cantidad}</TableCell>
+                      <TableCell align="right">
+                        <Typography fontWeight="bold">
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(prod.total_venta)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography>
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(prod.costo_unitario)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography>
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(prod.total_costo)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography fontWeight="bold" color={prod.utilidad_bruta >= 0 ? '#4caf50' : '#e94560'}>
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(prod.utilidad_bruta)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Chip 
+                          label={`${prod.margen_utilidad}%`} 
+                          color={parseFloat(prod.margen_utilidad) >= 25 ? 'success' : parseFloat(prod.margen_utilidad) >= 10 ? 'warning' : 'error'}
+                          size="small"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {calcularUtilidades.length > 0 && (
+            <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #eee', mt: 2, gap: 3 }}>
+              <Box sx={{ border: '1px solid #4caf50', borderRadius: 2, p: 2, bgcolor: 'rgba(76,175,80,0.05)' }}>
+                <Typography variant="caption" color="#1a1a2e" display="block">UTILIDAD TOTAL</Typography>
+                <Typography variant="h5" fontWeight={800} color="#4caf50">
+                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalUtilidad)}
+                </Typography>
+              </Box>
+              <Box sx={{ border: '1px dashed #666', borderRadius: 2, p: 2, bgcolor: 'rgba(0,0,0,0.02)' }}>
+                <Typography variant="caption" color="#1a1a2e" display="block">PRODUCTOS MOSTRADOS</Typography>
+                <Typography variant="h5" fontWeight={800} color="#1a1a2e">
+                  {calcularUtilidades.length}
+                </Typography>
+              </Box>
+            </Box>
+          )}
         </Paper>
       )}
 
