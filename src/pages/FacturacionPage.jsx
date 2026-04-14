@@ -6,7 +6,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Paper, Grid, TextField, Autocomplete,
   Button, MenuItem, Select, FormControl, InputLabel, IconButton,
-  Divider, Snackbar, Alert, Tabs, Tab, Tooltip,
+  Divider, Snackbar, Alert, Tabs, Tab, Tooltip, InputAdornment,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip,
   CircularProgress
@@ -23,6 +23,7 @@ import TableBarIcon from '@mui/icons-material/TableBar';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { productoService, clienteService, facturacionService, mesaService, comandaService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const METODOS_PAGO = [
   { value: 'efectivo', label: 'Efectivo' },
@@ -43,6 +44,7 @@ const FacturacionPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { state: navState } = location;
+  const { usuario } = useAuth();
   
   const [tab, setTab] = useState(0);
   const [platos, setPlatos] = useState([]);
@@ -82,6 +84,14 @@ const FacturacionPage = () => {
   const [fechaUtilHasta, setFechaUtilHasta] = useState('');
   const [productosSeleccionados, setProductosSeleccionados] = useState([]);
 
+  // Estados para División de Cuentas
+  const [openDividirCuentaModal, setOpenDividirCuentaModal] = useState(false);
+  const [numeroParcialPersonas, setNumeroParcialPersonas] = useState(1);
+  const [pagosPartiales, setPagosPartiales] = useState([]);
+  const [modoContaDividida, setModoContaDividida] = useState(false);
+  const [propinas, setPropinas] = useState([]);
+  const [formPropina, setFormPropina] = useState({ metodo_pago: '', monto: '' });
+
   const showSnack = (msg, severity = 'success') => setSnack({ open: true, msg, severity });
 
   const fetchDatos = useCallback(async () => {
@@ -102,6 +112,10 @@ const FacturacionPage = () => {
       if (navState?.comandaId) {
         setPedidoActual(navState.productos || []);
         setIdComandaVinculada(navState.comandaId);
+        const mesaVinculada = navState.mesaId
+          ? resM.data.find(m => m._id === navState.mesaId)
+          : resM.data.find(m => m.pedido_actual?._id === navState.comandaId);
+        setMesaSeleccionada(mesaVinculada?._id || null);
         if (navState.cliente) {
           const cli = resC.data.find(c => c._id === navState.cliente._id);
           setCliente(cli || null);
@@ -230,6 +244,83 @@ const FacturacionPage = () => {
 
   const agregarProducto = (prod) => setPedidoActual(prev => [...prev, { ...prod, uid: Math.random().toString(36).substr(2, 9) }]);
   const quitarProducto = (uid) => setPedidoActual(prev => prev.filter(item => item.uid !== uid));
+  const totalPropinas = propinas.reduce((sum, propina) => sum + (propina.monto || 0), 0);
+
+  const agregarPropina = () => {
+    const monto = Number(formPropina.monto || 0);
+    if (!formPropina.metodo_pago || monto <= 0) {
+      showSnack('Selecciona método y monto de propina mayor a cero.', 'warning');
+      return;
+    }
+
+    setPropinas(prev => [...prev, { metodo_pago: formPropina.metodo_pago, monto }]);
+    setFormPropina({ metodo_pago: '', monto: '' });
+  };
+
+  const quitarPropina = (index) => {
+    setPropinas(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const renderPropinas = () => (
+    <Box sx={{ mb: 2, p: 2, borderRadius: 2, bgcolor: '#fffaf0', border: '1px solid #ffcc80' }}>
+      <Typography variant="subtitle2" fontWeight={800} color="#ef6c00" sx={{ mb: 1.5 }}>
+        Propina
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+        <FormControl size="small" sx={{ flex: 1 }}>
+          <InputLabel>Método</InputLabel>
+          <Select
+            value={formPropina.metodo_pago}
+            label="Método"
+            onChange={e => setFormPropina(prev => ({ ...prev, metodo_pago: e.target.value }))}
+            sx={{ borderRadius: 1 }}
+          >
+            {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
+          </Select>
+        </FormControl>
+        <TextField
+          size="small"
+          label="Monto"
+          type="number"
+          value={formPropina.monto}
+          onChange={e => setFormPropina(prev => ({ ...prev, monto: e.target.value }))}
+          InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+          sx={{ width: 120 }}
+        />
+      </Box>
+      <Button fullWidth variant="outlined" onClick={agregarPropina} sx={{ mb: propinas.length ? 1.5 : 0, borderRadius: 2, borderColor: '#ef6c00', color: '#ef6c00', fontWeight: 700 }}>
+        Agregar propina
+      </Button>
+      {propinas.map((propina, idx) => (
+        <Box key={`${propina.metodo_pago}-${idx}`} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, py: 0.5 }}>
+          <Typography variant="caption" fontWeight={700}>
+            {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(propina.monto)} {propina.metodo_pago}
+          </Typography>
+          <IconButton size="small" color="error" onClick={() => quitarPropina(idx)} sx={{ p: 0.25 }}>
+            <DeleteIcon fontSize="inherit" />
+          </IconButton>
+        </Box>
+      ))}
+      {propinas.length > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #ffcc80', mt: 1, pt: 1 }}>
+          <Typography variant="caption" fontWeight={800}>Total propina:</Typography>
+          <Typography variant="caption" fontWeight={900} color="#ef6c00">
+            {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalPropinas)}
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
+
+  const imprimirFacturaTermica = (factura, delay = 500) => {
+    setFacturaFinal(null);
+    setTimeout(() => {
+      setFacturaFinal(factura);
+      setTimeout(() => {
+        window.print();
+      }, delay);
+    }, 0);
+  };
 
   const manejarFacturacion = async () => {
     if (!metodoPago) {
@@ -256,12 +347,13 @@ const FacturacionPage = () => {
             cantidad: 1
           };
         }),
-        id_comanda: idComandaVinculada
+        id_comanda: idComandaVinculada,
+        propinas
       };
 
       // 1. Crear la Factura
       const res = await facturacionService.create(payload);
-      setFacturaFinal(res.data);
+      const facturaCreada = res.data;
       
       // 2. Si vino de una mesa, cerrar la comanda
       if (idComandaVinculada) {
@@ -277,12 +369,14 @@ const FacturacionPage = () => {
       setIdComandaVinculada(null);
       setMesaSeleccionada(null);
       setMetodoPago('');
+      setPropinas([]);
+      setFormPropina({ metodo_pago: '', monto: '' });
       
       // 4. Refrescar datos para liberar mesa en UI local
       fetchDatos();
       
       // Imprimir comprobante
-      setTimeout(() => { window.print(); }, 500);
+      imprimirFacturaTermica(facturaCreada, 500);
 
     } catch (error) {
       console.error('Error en facturación:', error);
@@ -307,11 +401,8 @@ const FacturacionPage = () => {
     }
   };
 
-  const reImprimir = (factura) => {
-    setFacturaFinal(factura);
-    setTimeout(() => {
-      window.print();
-    }, 300);
+  const reImprimir = (factura, delay = 650) => {
+    imprimirFacturaTermica(factura, delay);
   };
 
   const handleDelete = (id) => {
@@ -334,6 +425,103 @@ const FacturacionPage = () => {
       showSnack(err.response?.data?.message || 'Error al eliminar o clave incorrecta.', 'error');
     }
   };
+
+  // --- FUNCIONES PARA DIVISIÓN DE CUENTAS ---
+  const abrirDividirCuenta = () => {
+    setNumeroParcialPersonas(1);
+    setPagosPartiales([]);
+    setOpenDividirCuentaModal(true);
+  };
+
+  const confirmarDividirCuenta = () => {
+    const personas = Number(numeroParcialPersonas);
+    if (!Number.isInteger(personas) || personas < 1 || personas > 10) {
+      showSnack('Debes seleccionar entre 1 y 10 personas.', 'warning');
+      return;
+    }
+    const nuevasPagos = Array(personas).fill(null).map(() => ({
+      metodo_pago: '',
+      monto: 0
+    }));
+    setPagosPartiales(nuevasPagos);
+    setModoContaDividida(true);
+    setOpenDividirCuentaModal(false);
+    showSnack(`Modo dividido activado para ${personas} personas.`);
+  };
+
+  const actualizarPagoPartial = (index, metodo_pago, monto) => {
+    const nuevos = [...pagosPartiales];
+    nuevos[index] = { metodo_pago, monto: typeof monto === 'string' ? parseFloat(monto) || 0 : monto };
+    setPagosPartiales(nuevos);
+  };
+
+  const cancelarDividirCuenta = () => {
+    setModoContaDividida(false);
+    setPagosPartiales([]);
+    setNumeroParcialPersonas(1);
+    showSnack('Modo dividido cancelado.');
+  };
+
+  const sumaPagos = pagosPartiales.reduce((sum, p) => sum + (p.monto || 0), 0);
+  const faltaPagar = totalCaja - sumaPagos;
+  const puedeFacturar = sumaPagos === totalCaja && pagosPartiales.every(p => p.metodo_pago);
+
+  const manejarFacturacionDividida = async () => {
+    if (!puedeFacturar) {
+      showSnack('Debes completar todos los métodos de pago y que sumen exactamente el total.', 'warning');
+      return;
+    }
+
+    try {
+      // Crear factura con detalles de pagos parciales
+      const payload = {
+        metodo_pago: 'dividido', // Indicador de pago dividido
+        total_pagado: totalCaja,
+        id_cliente: cliente?._id || null,
+        detalle_pedido: pedidoActual.map(p => {
+          const productoActual = platos.find(x => x._id === p._id);
+          return {
+            id_producto: p._id,
+            nombre: p.nombre,
+            precio: p.precio,
+            costo: p.costo !== undefined && p.costo !== null ? p.costo : productoActual?.costo ?? null,
+            cantidad: 1
+          };
+        }),
+        id_comanda: idComandaVinculada,
+        pagos_parciales: pagosPartiales, // Agregar info de pagos divididos
+        propinas
+      };
+
+      const res = await facturacionService.create(payload);
+      const facturaCreada = res.data;
+      
+      if (idComandaVinculada) {
+        await comandaService.update(idComandaVinculada, { facturada: true });
+        showSnack('Factura creada con cuenta dividida y mesa liberada.', 'success');
+      } else {
+        showSnack('Factura con cuenta dividida procesada con éxito.', 'success');
+      }
+
+      // Limpiar
+      setPedidoActual([]);
+      setCliente(null);
+      setIdComandaVinculada(null);
+      setMesaSeleccionada(null);
+      setMetodoPago('');
+      setModoContaDividida(false);
+      setPagosPartiales([]);
+      setPropinas([]);
+      setFormPropina({ metodo_pago: '', monto: '' });
+      fetchDatos();
+      
+      imprimirFacturaTermica(facturaCreada, 500);
+    } catch (error) {
+      console.error('Error en facturación dividida:', error);
+      showSnack(error.response?.data?.error || error.response?.data?.message || 'Error al procesar la factura dividida.', 'error');
+    }
+  };
+
   return (
     <Box sx={{ width: 'calc(100% + 48px)', ml: -3, mr: -3, px: 3 }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
@@ -341,18 +529,20 @@ const FacturacionPage = () => {
           <Tab icon={<PointOfSaleIcon />} label="Punto de Caja" iconPosition="start" />
           <Tab icon={<TodayIcon />} label="Ventas de Hoy" iconPosition="start" />
           <Tab icon={<AssessmentIcon />} label="Listado General" iconPosition="start" />
-          <Tab icon={<TrendingUpIcon />} label="Utilidad" iconPosition="start" />
+          {(usuario?.rol === 'cajero' || usuario?.rol === 'admin') && (
+            <Tab icon={<TrendingUpIcon />} label="Utilidad" iconPosition="start" />
+          )}
         </Tabs>
       </Box>
 
       {tab === 0 && (
-        <Box sx={{ width: '100%', display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+        <Box sx={{ width: '100%', display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 2, alignItems: 'flex-start' }}>
           
-          {/* ÁREA IZQUIERDA: CATÁLOGO Y DATOS (STRETCHED) */}
-          <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {/* ÁREA IZQUIERDA: DATOS Y PRODUCTOS */}
+          <Box sx={{ width: { xs: '100%', lg: '50%' }, flex: { lg: '0 0 calc(50% - 8px)' }, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
             
             {/* CABECERA: CLIENTE Y MESA */}
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
               <Paper elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
                 <Typography variant="subtitle2" fontWeight={700} color="primary" sx={{ mb: 1.5 }}>DATOS DEL CLIENTE</Typography>
                 {!cliente ? (
@@ -401,7 +591,7 @@ const FacturacionPage = () => {
               </Paper>
             </Box>
 
-            {/* SECCIÓN DE PRODUCTOS: 100% DEL ESPACIO RESTANTE */}
+            {/* SECCIÓN DE PRODUCTOS */}
             <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', minHeight: '75vh', flexGrow: 1 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
                 <Typography variant="h5" fontWeight={900} color="#1a1a2e">PRODUCTOS</Typography>
@@ -428,7 +618,7 @@ const FacturacionPage = () => {
               
               <Grid container spacing={1.5}>
                 {prodFiltrados.slice(0, 120).map(prod => (
-                  <Grid item xs={6} sm={4} md={3} lg={2} xl={1.2} key={prod._id}>
+                  <Grid item xs={6} sm={4} md={4} lg={3} xl={3} key={prod._id}>
                     <Box
                       onClick={() => agregarProducto(prod)}
                       sx={{ p: 2, border: '1px solid #f0f0f0', borderRadius: 3, textAlign: 'center', bgcolor: '#fff', cursor: 'pointer', transition: 'all 0.2s', '&:hover': { borderColor: '#e94560', transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(233,69,96,0.1)' } }}
@@ -444,53 +634,129 @@ const FacturacionPage = () => {
             </Paper>
           </Box>
 
-          {/* ÁREA DERECHA: RESUMEN (PEGA AL BORDE DERECHO) */}
-          <Box sx={{ width: 340, flexShrink: 0, position: 'sticky', top: 84 }}>
-            <Paper elevation={6} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(233,69,96,0.1)', bgcolor: '#fff', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 180px)' }}>
+          {/* ÁREA DERECHA: RESUMEN */}
+          <Box sx={{ width: { xs: '100%', lg: '50%' }, flex: { lg: '0 0 calc(50% - 8px)' }, minWidth: 0, position: { lg: 'sticky' }, top: { lg: 84 } }}>
+            <Paper elevation={6} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(233,69,96,0.1)', bgcolor: '#fff', display: 'flex', flexDirection: 'column', height: { xs: 'auto', lg: 'calc(100vh - 180px)' }, minHeight: { xs: 560, lg: 'calc(100vh - 180px)' } }}>
               <Typography variant="h6" fontWeight={900} sx={{ mb: 2, borderBottom: '3px solid #e94560', pb: 1 }}>RESUMEN</Typography>
               
-              <Box sx={{ flexGrow: 1, overflowY: 'auto', mb: 3, pr: 1 }}>
-                {pedidoActual.length === 0 ? (
-                  <Box sx={{ py: 10, textAlign: 'center', opacity: 0.5 }}>
-                    <ReceiptLongIcon sx={{ fontSize: 60, mb: 1, color: '#ccc' }} />
-                    <Typography variant="body2">Agregue productos</Typography>
-                  </Box>
-                ) : (
-                  pedidoActual.map((item, idx) => (
-                    <Box key={item.uid || idx} sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, pb: 1, borderBottom: '1px solid #f9f9f9' }}>
-                      <Box sx={{ maxWidth: '75%' }}>
-                        <Typography variant="body2" fontWeight={700} display="block" sx={{ lineHeight: 1.2 }}>{item.nombre}</Typography>
-                        <Typography variant="caption" color="text.secondary">${new Intl.NumberFormat('es-CO').format(item.precio)}</Typography>
-                      </Box>
-                      <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)} sx={{ p: 0.5, bgcolor: '#fff0f0' }}>
-                        <DeleteIcon fontSize="inherit" />
-                      </IconButton>
+              <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+                <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', pr: { md: 1 }, borderRight: { md: '1px solid #f0f0f0' } }}>
+                  {pedidoActual.length === 0 ? (
+                    <Box sx={{ py: 10, textAlign: 'center', opacity: 0.5 }}>
+                      <ReceiptLongIcon sx={{ fontSize: 60, mb: 1, color: '#ccc' }} />
+                      <Typography variant="body2">Agregue productos</Typography>
                     </Box>
-                  ))
-                )}
-              </Box>
-
-              <Box sx={{ mt: 'auto' }}>
-                <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-                  <InputLabel>Forma de Pago</InputLabel>
-                  <Select value={metodoPago} label="Forma de Pago" onChange={e => setMetodoPago(e.target.value)} sx={{ fontWeight: 700, borderRadius: 2 }}>
-                    {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
-                  </Select>
-                </FormControl>
-
-                <Box sx={{ bgcolor: '#1a1a2e', color: '#fff', p: 3, borderRadius: 3, textAlign: 'center', mb: 3, boxShadow: '0 8px 32px rgba(26,26,46,0.3)' }}>
-                  <Typography variant="caption" sx={{ opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1.5, fontSize: '0.6rem' }}>Total Neto</Typography>
-                  <Typography variant="h4" fontWeight={900} color="#e94560">
-                    ${new Intl.NumberFormat('es-CO').format(totalCaja)}
-                  </Typography>
+                  ) : (
+                    pedidoActual.map((item, idx) => (
+                      <Box key={item.uid || idx} sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, pb: 1, borderBottom: '1px solid #f9f9f9' }}>
+                        <Box sx={{ maxWidth: '75%' }}>
+                          <Typography variant="body2" fontWeight={700} display="block" sx={{ lineHeight: 1.2 }}>{item.nombre}</Typography>
+                          <Typography variant="caption" color="text.secondary">${new Intl.NumberFormat('es-CO').format(item.precio)}</Typography>
+                        </Box>
+                        <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)} sx={{ p: 0.5, bgcolor: '#fff0f0' }}>
+                          <DeleteIcon fontSize="inherit" />
+                        </IconButton>
+                      </Box>
+                    ))
+                  )}
                 </Box>
 
-                <Button
-                  fullWidth variant="contained" onClick={manejarFacturacion} disabled={pedidoActual.length === 0}
-                  sx={{ py: 2, background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 3, fontWeight: 800, fontSize: '1rem', letterSpacing: 1, boxShadow: '0 4px 15px rgba(233,69,96,0.4)' }}
-                >
-                  COBRAR AHORA
-                </Button>
+                <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                {!modoContaDividida ? (
+                  <>
+                    <Button
+                      fullWidth variant="outlined" onClick={abrirDividirCuenta} sx={{ mb: 2, borderRadius: 2, color: '#1a1a2e', borderColor: '#1a1a2e', fontWeight: 700 }}
+                    >
+                      Dividir Cuenta
+                    </Button>
+
+                    <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                      <InputLabel>Forma de Pago</InputLabel>
+                      <Select value={metodoPago} label="Forma de Pago" onChange={e => setMetodoPago(e.target.value)} sx={{ fontWeight: 700, borderRadius: 2 }}>
+                        {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+
+                    <Box sx={{ bgcolor: '#1a1a2e', color: '#fff', p: 3, borderRadius: 3, textAlign: 'center', mb: 3, boxShadow: '0 8px 32px rgba(26,26,46,0.3)' }}>
+                      <Typography variant="caption" sx={{ opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1.5, fontSize: '0.6rem' }}>Total Neto</Typography>
+                      <Typography variant="h4" fontWeight={900} color="#e94560">
+                        ${new Intl.NumberFormat('es-CO').format(totalCaja)}
+                      </Typography>
+                    </Box>
+
+                    {renderPropinas()}
+
+                    <Button
+                      fullWidth variant="contained" onClick={manejarFacturacion} disabled={pedidoActual.length === 0}
+                      sx={{ mt: 'auto', py: 2, background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 3, fontWeight: 800, fontSize: '1rem', letterSpacing: 1, boxShadow: '0 4px 15px rgba(233,69,96,0.4)' }}
+                    >
+                      COBRAR AHORA
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Box sx={{ mb: 2, p: 2, borderRadius: 2, bgcolor: 'rgba(76,175,80,0.1)', border: '1px solid #4caf50' }}>
+                      <Typography variant="subtitle2" fontWeight={700} color="#4caf50" sx={{ mb: 2 }}>MOD↓ CUENTA DIVIDIDA</Typography>
+                      {pagosPartiales.map((pago, idx) => (
+                        <Box key={idx} sx={{ mb: 2, pb: 2, borderBottom: idx < pagosPartiales.length - 1 ? '1px dashed #ccc' : 'none' }}>
+                          <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" sx={{ mb: 0.5 }}>Persona {idx + 1}</Typography>
+                          <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                            <FormControl size="small" fullWidth>
+                              <InputLabel>Método</InputLabel>
+                              <Select
+                                value={pago.metodo_pago}
+                                label="Método"
+                                onChange={e => actualizarPagoPartial(idx, e.target.value, pago.monto)}
+                                sx={{ borderRadius: 1 }}
+                              >
+                                {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
+                              </Select>
+                            </FormControl>
+                          </Box>
+                          <TextField
+                            fullWidth size="small" label="Monto" type="number" 
+                            value={pago.monto || ''}
+                            onChange={e => actualizarPagoPartial(idx, pago.metodo_pago, e.target.value)}
+                            InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                            sx={{ borderRadius: 1 }}
+                          />
+                        </Box>
+                      ))}
+
+                      <Box sx={{ pt: 2, borderTop: '2px solid #eee', mt: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="caption" fontWeight={700}>Total Pagado:</Typography>
+                          <Typography variant="caption" fontWeight={700} color={sumaPagos === totalCaja ? '#4caf50' : '#f44336'}>
+                            ${new Intl.NumberFormat('es-CO').format(sumaPagos)}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="caption" fontWeight={700}>Pendiente:</Typography>
+                          <Typography variant="caption" fontWeight={800} color={faltaPagar === 0 ? '#4caf50' : '#e94560'}>
+                            ${new Intl.NumberFormat('es-CO').format(Math.max(0, faltaPagar))}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+
+                    {renderPropinas()}
+
+                    <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
+                      <Button
+                        fullWidth variant="outlined" color="error" onClick={cancelarDividirCuenta} sx={{ borderRadius: 2 }}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        fullWidth variant="contained" onClick={manejarFacturacionDividida} disabled={!puedeFacturar}
+                        sx={{ background: puedeFacturar ? 'linear-gradient(135deg, #4caf50, #388e3c)' : '#ccc', borderRadius: 2, fontWeight: 800 }}
+                      >
+                        COBRAR
+                      </Button>
+                    </Box>
+                  </>
+                )}
+                </Box>
               </Box>
             </Paper>
           </Box>
@@ -567,7 +833,7 @@ const FacturacionPage = () => {
       )}
 
       {/* TAB 3: ANÁLISIS DE UTILIDAD */}
-      {tab === 3 && (
+      {tab === 3 && (usuario?.rol === 'cajero' || usuario?.rol === 'admin') && (
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid item xs={12} md={2}>
@@ -705,20 +971,21 @@ const FacturacionPage = () => {
                    display: block !important; 
                    position: absolute !important; 
                    left: 0 !important; top: 0 !important; 
-                   width: 78mm !important; 
+                   width: 80mm !important; 
                    padding: 5mm !important;
                    font-family: monospace !important; 
                    font-size: 12px; 
                    color: #000; 
                    box-sizing: border-box; 
                 }
-                @page { size: auto; margin: 0; }
+                @page { size: 80mm auto; margin: 0; }
               }
             `}
           </style>
           <Box textAlign="center" mb={2}>
-            <Typography fontWeight="bold" fontSize="16px">MI RESTAURANTE S.A.S</Typography>
-            <Typography fontSize="12px">NIT: 900.XXX.XXX-X</Typography>
+            <Typography fontWeight="bold" fontSize="16px">LA PERLA RESTAURANTE BQ</Typography>
+            <Typography fontSize="12px">Dir.: cra 62 # 72-28</Typography>
+            <Typography fontSize="12px">Telf.: 315 075 2214</Typography>
             <Typography fontSize="12px">Fecha: {new Date(facturaFinal.createdAt || new Date()).toLocaleString()}</Typography>
             <Typography fontSize="12px">Factura Venta #: {facturaFinal.numero_factura || 'N/A'}</Typography>
           </Box>
@@ -758,10 +1025,39 @@ const FacturacionPage = () => {
               {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.total_pagado)}
             </Typography>
           </Box>
-          <Box display="flex" justifyContent="space-between" mb={2}>
-            <Typography fontSize="12px">Método Pago:</Typography>
-            <Typography fontSize="12px" textTransform="uppercase">{facturaFinal.metodo_pago}</Typography>
+          <Box mb={2}>
+            <Typography fontSize="12px" fontWeight="bold">PAGOS</Typography>
+            {(facturaFinal.pagos_parciales?.length
+              ? facturaFinal.pagos_parciales
+              : [{ metodo_pago: facturaFinal.metodo_pago, monto: facturaFinal.total_pagado }]
+            ).map((pago, idx) => (
+              <Box key={`${pago.metodo_pago}-${idx}`} display="flex" justifyContent="space-between">
+                <Typography fontSize="12px" textTransform="uppercase">{pago.metodo_pago || 'Sin método'}</Typography>
+                <Typography fontSize="12px">
+                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(pago.monto || 0)}
+                </Typography>
+              </Box>
+            ))}
           </Box>
+          {facturaFinal.propinas?.length > 0 && (
+            <Box mb={2}>
+              <Typography fontSize="12px" fontWeight="bold">PROPINA</Typography>
+              {facturaFinal.propinas.map((propina, idx) => (
+                <Box key={idx} display="flex" justifyContent="space-between">
+                  <Typography fontSize="12px" textTransform="uppercase">{propina.metodo_pago || 'Sin método'}</Typography>
+                  <Typography fontSize="12px">
+                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(propina.monto || 0)}
+                  </Typography>
+                </Box>
+              ))}
+              <Box display="flex" justifyContent="space-between" mt={0.5} pt={0.5} borderTop="1px dotted #000">
+                <Typography fontSize="12px" fontWeight="bold">TOTAL PROPINA</Typography>
+                <Typography fontSize="12px" fontWeight="bold">
+                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.propinas.reduce((sum, propina) => sum + (propina.monto || 0), 0))}
+                </Typography>
+              </Box>
+            </Box>
+          )}
 
           <Typography textAlign="center" fontSize="12px" fontWeight="bold" mt={3}>
             ¡GRACIAS POR SU COMPRA!
@@ -803,6 +1099,41 @@ const FacturacionPage = () => {
         </DialogActions>
       </Dialog>
 
+      {/* MODAL DIVIDIR CUENTA */}
+      <Dialog open={openDividirCuentaModal} onClose={() => setOpenDividirCuentaModal(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ background: 'linear-gradient(135deg, #4caf50, #388e3c)', color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box>Dividir Cuenta</Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
+            ¿Cuántas personas van a pagar esta cuenta?
+          </Typography>
+          <TextField
+            fullWidth
+            type="number"
+            label="Número de Personas"
+            value={numeroParcialPersonas}
+            onChange={e => setNumeroParcialPersonas(e.target.value === '' ? '' : Number(e.target.value))}
+            inputProps={{ min: 1, max: 10 }}
+            variant="outlined"
+            autoFocus
+            helperText="Mínimo 1, máximo 10 personas"
+          />
+          <Box sx={{ mt: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+            <Typography variant="caption" fontWeight={700} display="block" sx={{ mb: 1 }}>TOTAL A DIVIDIR:</Typography>
+            <Typography variant="h6" fontWeight={900} color="#4caf50">
+              ${new Intl.NumberFormat('es-CO').format(totalCaja)}
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button onClick={() => setOpenDividirCuentaModal(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button onClick={confirmarDividirCuenta} variant="contained" sx={{ borderRadius: 2, background: 'linear-gradient(135deg, #4caf50, #388e3c)', fontWeight: 700 }}>
+            Continuar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <Alert severity={snack.severity} variant="filled" sx={{ borderRadius: 2 }}>{snack.msg}</Alert>
       </Snackbar>
@@ -836,6 +1167,12 @@ const FacturacionPage = () => {
 const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
   const sumaTotal = facturas.reduce((sum, f) => sum + (f.total_pagado || 0), 0);
   const [facturaDetalle, setFacturaDetalle] = useState(null);
+  const obtenerMetodoPago = (factura) => {
+    if (factura.metodo_pago !== 'dividido') return factura.metodo_pago;
+
+    const metodos = [...new Set((factura.pagos_parciales || []).map(pago => pago.metodo_pago).filter(Boolean))];
+    return metodos.length ? metodos.join(', ') : 'dividido';
+  };
 
   return (
     <>
@@ -877,7 +1214,7 @@ const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Chip label={f.metodo_pago} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
+                    <Chip label={obtenerMetodoPago(f)} size="small" variant="outlined" sx={{ textTransform: 'uppercase' }} />
                   </TableCell>
                   <TableCell>
                     <Typography fontWeight="bold" color="#4caf50">
@@ -939,7 +1276,7 @@ const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
                 <Box>
                   <Typography variant="caption" color="text.secondary" fontWeight={700}>MÉTODO DE PAGO</Typography>
                   <Box mt={0.5}>
-                    <Chip label={facturaDetalle.metodo_pago} size="small" sx={{ textTransform: 'capitalize' }} />
+                    <Chip label={obtenerMetodoPago(facturaDetalle)} size="small" sx={{ textTransform: facturaDetalle.metodo_pago === 'dividido' ? 'uppercase' : 'capitalize' }} />
                   </Box>
                 </Box>
                 <Box>
@@ -976,23 +1313,100 @@ const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {(facturaDetalle.detalle_pedido || []).map((item, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{item.nombre || item.id_plato?.nombre || item.id_producto?.nombre || '—'}</TableCell>
-                        <TableCell align="center">{item.cantidad}</TableCell>
-                        <TableCell align="right">
-                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio_unitario || 0)}
-                        </TableCell>
-                        <TableCell align="right">
-                          <Typography fontWeight={700}>
-                            {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format((item.precio_unitario || 0) * (item.cantidad || 1))}
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {(facturaDetalle.detalle_pedido || []).map((item, i) => {
+                      const precioUnitario = item.precio ?? item.precio_unitario ?? 0;
+                      const cantidad = item.cantidad || 1;
+
+                      return (
+                        <TableRow key={i}>
+                          <TableCell>{item.nombre || item.id_plato?.nombre || item.id_producto?.nombre || '—'}</TableCell>
+                          <TableCell align="center">{cantidad}</TableCell>
+                          <TableCell align="right">
+                            {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(precioUnitario)}
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography fontWeight={700}>
+                              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(precioUnitario * cantidad)}
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>
+
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1, color: '#1a1a2e' }}>PAGOS</Typography>
+                  <Box sx={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: 2, p: 1.5 }}>
+                    {(() => {
+                      const pagos = facturaDetalle.pagos_parciales?.length
+                        ? facturaDetalle.pagos_parciales
+                        : [{ metodo_pago: facturaDetalle.metodo_pago, monto: facturaDetalle.total_pagado }];
+                      const totalPagos = pagos.reduce((sum, pago) => sum + (pago.monto || 0), 0);
+
+                      return (
+                        <>
+                          {pagos.map((pago, idx) => (
+                            <Box key={`${pago.metodo_pago}-${idx}`} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, py: 0.75, borderBottom: '1px solid #f2f2f2' }}>
+                              <Chip label={pago.metodo_pago || 'Sin método'} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
+                              <Typography variant="body2" fontWeight={800}>
+                                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(pago.monto || 0)}
+                              </Typography>
+                            </Box>
+                          ))}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, pt: 1, mt: 0.5 }}>
+                            <Typography variant="body2" fontWeight={900}>Total pagos</Typography>
+                            <Typography variant="body2" fontWeight={900}>
+                              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalPagos)}
+                            </Typography>
+                          </Box>
+                        </>
+                      );
+                    })()}
+                  </Box>
+                </Box>
+
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1, color: '#ef6c00' }}>PROPINAS</Typography>
+                  <Box sx={{ border: '1px solid #ffcc80', borderRadius: 2, p: 1.5, bgcolor: '#fffaf0' }}>
+                    {(() => {
+                      const propinasFactura = facturaDetalle.propinas || [];
+                      const totalPropinasFactura = propinasFactura.reduce((sum, propina) => sum + (propina.monto || 0), 0);
+
+                      return propinasFactura.length ? (
+                        <>
+                          {propinasFactura.map((propina, idx) => (
+                            <Box key={`${propina.metodo_pago}-${idx}`} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, py: 0.75, borderBottom: '1px solid #ffe0b2' }}>
+                              <Chip label={propina.metodo_pago || 'Sin método'} size="small" variant="outlined" sx={{ textTransform: 'capitalize', borderColor: '#ef6c00', color: '#ef6c00' }} />
+                              <Typography variant="body2" fontWeight={800} color="#ef6c00">
+                                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(propina.monto || 0)}
+                              </Typography>
+                            </Box>
+                          ))}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, pt: 1, mt: 0.5 }}>
+                            <Typography variant="body2" fontWeight={900} color="#ef6c00">Total propinas</Typography>
+                            <Typography variant="body2" fontWeight={900} color="#ef6c00">
+                              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalPropinasFactura)}
+                            </Typography>
+                          </Box>
+                        </>
+                      ) : (
+                        <>
+                          <Typography variant="body2" color="text.secondary" sx={{ pb: 1, borderBottom: '1px solid #ffe0b2' }}>Sin propina registrada</Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, pt: 1, mt: 0.5 }}>
+                            <Typography variant="body2" fontWeight={900} color="#ef6c00">Total propinas</Typography>
+                            <Typography variant="body2" fontWeight={900} color="#ef6c00">
+                              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(0)}
+                            </Typography>
+                          </Box>
+                        </>
+                      );
+                    })()}
+                  </Box>
+                </Box>
+              </Box>
 
               {/* Total */}
               <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -1006,7 +1420,7 @@ const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 3 }}>
               <Button onClick={() => setFacturaDetalle(null)} variant="outlined" sx={{ borderRadius: 2 }}>Cerrar</Button>
-              <Button onClick={() => { enReproduccion(facturaDetalle); setFacturaDetalle(null); }} variant="contained" startIcon={<PrintIcon />} sx={{ borderRadius: 2, background: '#0f3460' }}>
+              <Button onClick={() => { const factura = facturaDetalle; setFacturaDetalle(null); enReproduccion(factura, 650); }} variant="contained" startIcon={<PrintIcon />} sx={{ borderRadius: 2, background: '#0f3460' }}>
                 Re-Imprimir
               </Button>
             </DialogActions>

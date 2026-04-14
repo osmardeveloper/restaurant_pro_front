@@ -127,7 +127,8 @@ const MesasPage = () => {
       state: {
         productos: mesa.pedido_actual?.ids_productos || [],
         cliente: mesa.pedido_actual?.id_cliente || null,
-        comandaId: mesa.pedido_actual?._id || null
+        comandaId: mesa.pedido_actual?._id || null,
+        mesaId: mesa._id
       }
     });
   };
@@ -204,6 +205,7 @@ const MesasPage = () => {
 
   const totalEdicion = form.pedido_actual.reduce((acc, curr) => acc + (curr.precio || 0), 0);
   const prodFiltrados = platos.filter(p => (p.nombre || '').toLowerCase().includes(busquedaProd.toLowerCase()));
+  const formatoCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 
   return (
     <Box>
@@ -237,7 +239,9 @@ const MesasPage = () => {
         <Grid container spacing={2}>
           {mesas.map((mesa) => {
             const hasPedido = !!mesa.pedido_actual?.ids_productos;
-            const productosLength = hasPedido ? mesa.pedido_actual.ids_productos.length : 0;
+            const productosPedido = hasPedido ? mesa.pedido_actual.ids_productos : [];
+            const productosLength = productosPedido.length;
+            const totalPedido = productosPedido.reduce((acc, producto) => acc + (producto.precio || 0), 0);
             return (
             <Grid item xs={12} sm={6} md={4} lg={3} key={mesa._id}>
               <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }, borderTop: `4px solid ${mesa.estado === 'disponible' ? '#4caf50' : '#ff9800'}` }}>
@@ -249,7 +253,15 @@ const MesasPage = () => {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     {productosLength > 0 ? `${productosLength} producto(s) en pedido` : 'Sin pedido activo'}
                   </Typography>
-                  {hasPedido && (mesa.pedido_actual.ids_productos || []).slice(0, 3).map((plato, idx) => (
+                  {productosLength > 0 && (
+                    <Box sx={{ mb: 1.25, px: 1.5, py: 1, borderRadius: 2, bgcolor: '#edfaf0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="caption" fontWeight={800} color="success.dark">Total pedido</Typography>
+                      <Typography variant="body2" fontWeight={900} color="success.dark">
+                        {formatoCOP.format(totalPedido)}
+                      </Typography>
+                    </Box>
+                  )}
+                  {hasPedido && productosPedido.slice(0, 3).map((plato, idx) => (
                     <Chip key={plato._id ? `${plato._id}-${idx}` : idx} label={plato.nombre || 'Plato'} size="small" variant="outlined" sx={{ mr: 0.5, mb: 0.5, fontSize: '0.7rem' }} />
                   ))}
                   {productosLength > 3 && <Chip label={`+${productosLength - 3} más`} size="small" sx={{ fontSize: '0.7rem' }} />}

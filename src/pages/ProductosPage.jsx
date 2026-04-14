@@ -160,10 +160,10 @@ const ProductosPage = () => {
       field: 'precio', headerName: 'Precio', width: 110,
       renderCell: ({ value }) => <Typography fontWeight={600}>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value)}</Typography>
     },
-    { 
+    ...(usuario?.rol === 'cajero' || usuario?.rol === 'admin' ? [{
       field: 'costo', headerName: 'Costo', width: 110,
       renderCell: ({ value }) => <Typography fontWeight={600}>{value ? new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value) : '-'}</Typography>
-    },
+    }] : []),
     { 
       field: 'cantidad', headerName: 'Stock', width: 90,
       renderCell: ({ value }) => <Typography color={value <= 5 ? 'error' : 'inherit'}>{value}</Typography>
@@ -273,7 +273,9 @@ const ProductosPage = () => {
           
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField fullWidth label="Precio" value={form.precio} onChange={e => setForm(p => ({ ...p, precio: e.target.value }))} margin="normal" error={!!formErrors.precio} helperText={formErrors.precio} InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
-            <TextField fullWidth label="Costo (Opcional)" value={form.costo} onChange={e => setForm(p => ({ ...p, costo: e.target.value }))} margin="normal" error={!!formErrors.costo} helperText={formErrors.costo || ''} InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
+            {(usuario?.rol === 'cajero' || usuario?.rol === 'admin') && (
+              <TextField fullWidth label="Costo (Opcional)" value={form.costo} onChange={e => setForm(p => ({ ...p, costo: e.target.value }))} margin="normal" error={!!formErrors.costo} helperText={formErrors.costo || ''} InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
+            )}
           </Box>
 
           <TextField 

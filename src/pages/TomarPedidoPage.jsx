@@ -372,7 +372,7 @@ const TomarPedidoPage = () => {
             onClick={finalizarTodo}
             sx={{ borderRadius: 2, py: 1.2, fontWeight: 600 }}
           >
-            Nuevo Pedido
+            Cerrar
           </Button>
         </DialogContent>
       </Dialog>

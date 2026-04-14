@@ -13,6 +13,56 @@ import { facturacionService, gastoService } from '../services/api';
 
 const METODOS_PAGO = ['efectivo', 'bancolombia', 'nequi', 'daviplata', 'datafono'];
 const formatCol = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(val || 0);
+const crearResumenMetodos = () => METODOS_PAGO.reduce((acc, metodo) => {
+  acc[metodo] = { total: 0, montos: [] };
+  return acc;
+}, {});
+
+const obtenerPagosFactura = (factura) => {
+  if (factura.metodo_pago === 'dividido' && Array.isArray(factura.pagos_parciales) && factura.pagos_parciales.length > 0) {
+    return factura.pagos_parciales;
+  }
+
+  return [{
+    metodo_pago: factura.metodo_pago,
+    monto: factura.total_pagado || 0,
+  }];
+};
+
+const agruparPagosFactura = (factura) => {
+  const resumen = crearResumenMetodos();
+
+  obtenerPagosFactura(factura).forEach(pago => {
+    if (!METODOS_PAGO.includes(pago.metodo_pago)) return;
+    const monto = Number(pago.monto || 0);
+    resumen[pago.metodo_pago].total += monto;
+    resumen[pago.metodo_pago].montos.push(monto);
+  });
+
+  return resumen;
+};
+
+const nombreFormaPago = (factura) => {
+  if (factura.metodo_pago !== 'dividido') return factura.metodo_pago;
+
+  const totalPagos = obtenerPagosFactura(factura).length;
+  return totalPagos === 1 ? 'dividido (1 pago)' : `dividido (${totalPagos} pagos)`;
+};
+
+const obtenerPropinasFactura = (factura) => Array.isArray(factura.propinas) ? factura.propinas : [];
+
+const totalPropinasFactura = (factura) => obtenerPropinasFactura(factura)
+  .reduce((sum, propina) => sum + Number(propina.monto || 0), 0);
+
+const textoPropinasFactura = (factura) => {
+  const propinas = obtenerPropinasFactura(factura);
+  if (!propinas.length) return '$0';
+
+  return propinas
+    .map(propina => `${formatCol(propina.monto)} ${propina.metodo_pago}`)
+    .join(', ');
+};
+
 const formatPeriodo = (iso) => {
   const [y, m, d] = iso.split('-');
   return new Date(Number(y), Number(m) - 1, Number(d))
@@ -136,12 +186,15 @@ const CierreCajaPage = () => {
   }, [facturas, gastos, fechaInicio, fechaFin]);
 
   const globalesIngreso = useMemo(() => {
-    const c = { total: 0 };
+    const c = { total: 0, propina: 0 };
     METODOS_PAGO.forEach(m => c[m] = 0);
     filtradas.forEach(f => {
-      const a = f.total_pagado || 0;
-      c.total += a;
-      if (METODOS_PAGO.includes(f.metodo_pago)) c[f.metodo_pago] += a;
+      c.total += f.total_pagado || 0;
+      c.propina += totalPropinasFactura(f);
+      const pagosPorMetodo = agruparPagosFactura(f);
+      METODOS_PAGO.forEach(m => {
+        c[m] += pagosPorMetodo[m].total;
+      });
     });
     return c;
   }, [filtradas]);
@@ -209,6 +262,7 @@ const CierreCajaPage = () => {
           <Grid container spacing={2} justifyContent="center" textAlign="center">
             {[
               { label: 'TOTAL FACTURA', val: globalesIngreso.total, color: '#1976d2' },
+              { label: 'PROPINA', val: globalesIngreso.propina, color: '#ef6c00' },
               ...METODOS_PAGO.map(m => ({ label: m.toUpperCase(), val: globalesIngreso[m], color: '#1a1a2e' })),
               { label: 'GASTOS GLOBALES', val: globalesEgreso.total, color: 'error.main' },
               { label: 'GASTOS EN EFECTIVO', val: globalesEgreso.efectivo, color: 'error.main' },
@@ -234,29 +288,48 @@ const CierreCajaPage = () => {
                     <RCell isHeader>Factura</RCell><RCell isHeader>Fecha</RCell>
                     <RCell isHeader>Cliente</RCell><RCell isHeader>Forma Pago</RCell>
                     <RCell isHeader>Total Factura</RCell>
+                    <RCell isHeader>Propina</RCell>
                     {METODOS_PAGO.map(m => <RCell isHeader align="center" key={m}>{m.toUpperCase()}</RCell>)}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filtradas.length === 0
-                    ? <TableRow><TableCell colSpan={10} align="center" sx={{ py: 3 }}>No hay facturas en este periodo</TableCell></TableRow>
-                    : filtradas.map(f => (
-                      <TableRow key={f._id} hover>
-                        <RCell>{f.numero_factura || '...'}</RCell>
-                        <RCell>
-                          <Typography variant="body2">{new Date(f.createdAt).toLocaleDateString()}</Typography>
-                          <Typography variant="caption" color="text.secondary">{new Date(f.createdAt).toLocaleTimeString()}</Typography>
-                        </RCell>
-                        <RCell>{f.id_cliente ? `${f.id_cliente.nombre} ${f.id_cliente.apellido}` : 'Consumidor Final'}</RCell>
-                        <RCell>{f.metodo_pago}</RCell>
-                        <RCell>{formatCol(f.total_pagado)}</RCell>
-                        {METODOS_PAGO.map(m => <RCell align="center" key={m}>{f.metodo_pago === m ? formatCol(f.total_pagado) : '$ 0'}</RCell>)}
-                      </TableRow>
-                    ))
+                    ? <TableRow><TableCell colSpan={11} align="center" sx={{ py: 3 }}>No hay facturas en este periodo</TableCell></TableRow>
+                    : filtradas.map(f => {
+                      const pagosPorMetodo = agruparPagosFactura(f);
+
+                      return (
+                        <TableRow key={f._id} hover>
+                          <RCell>{f.numero_factura || '...'}</RCell>
+                          <RCell>
+                            <Typography variant="body2">{new Date(f.createdAt).toLocaleDateString()}</Typography>
+                            <Typography variant="caption" color="text.secondary">{new Date(f.createdAt).toLocaleTimeString()}</Typography>
+                          </RCell>
+                          <RCell>{f.id_cliente ? `${f.id_cliente.nombre} ${f.id_cliente.apellido}` : 'Consumidor Final'}</RCell>
+                          <RCell>{nombreFormaPago(f)}</RCell>
+                          <RCell>{formatCol(f.total_pagado)}</RCell>
+                          <RCell>{textoPropinasFactura(f)}</RCell>
+                          {METODOS_PAGO.map(m => (
+                            <RCell align="center" key={m}>
+                              {pagosPorMetodo[m].montos.length === 0 ? (
+                                <Typography variant="body2" fontWeight={600}>{formatCol(0)}</Typography>
+                              ) : (
+                                pagosPorMetodo[m].montos.map((monto, idx) => (
+                                  <Typography variant="body2" fontWeight={600} key={`${m}-${idx}`}>
+                                    {formatCol(monto)}
+                                  </Typography>
+                                ))
+                              )}
+                            </RCell>
+                          ))}
+                        </TableRow>
+                      );
+                    })
                   }
                   <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                     <RCell isHeader colSpan={4} align="right">TOTALES FACTURADO</RCell>
                     <RCell isHeader color="#1976d2">{formatCol(globalesIngreso.total)}</RCell>
+                    <RCell isHeader color="#ef6c00">{formatCol(globalesIngreso.propina)}</RCell>
                     {METODOS_PAGO.map(m => <RCell isHeader align="center" key={m}>{formatCol(globalesIngreso[m])}</RCell>)}
                   </TableRow>
                 </TableBody>
@@ -317,6 +390,7 @@ const CierreCajaPage = () => {
           <thead>
             <tr>
               <td><span className="lbl">Total Factura</span></td>
+              <td><span className="lbl">Propina</span></td>
               {METODOS_PAGO.map(m => <td key={m}><span className="lbl">{m}</span></td>)}
               <td><span className="lbl">Gastos Globales</span></td>
               <td><span className="lbl">Gastos Efectivo</span></td>
@@ -326,6 +400,7 @@ const CierreCajaPage = () => {
           <tbody>
             <tr>
               <td><span className="val c-blue">{formatCol(globalesIngreso.total)}</span></td>
+              <td><span className="val">{formatCol(globalesIngreso.propina)}</span></td>
               {METODOS_PAGO.map(m => <td key={m}><span className="val">{formatCol(globalesIngreso[m])}</span></td>)}
               <td><span className="val c-red">{formatCol(globalesEgreso.total)}</span></td>
               <td><span className="val c-red">{formatCol(globalesEgreso.efectivo)}</span></td>
@@ -339,24 +414,33 @@ const CierreCajaPage = () => {
         <table className="data">
           <thead>
             <tr>
-              <th>Factura</th><th>Fecha</th><th>Cliente</th><th>Forma Pago</th><th>Total</th>
+              <th>Factura</th><th>Fecha</th><th>Cliente</th><th>Forma Pago</th><th>Total</th><th>Propina</th>
               {METODOS_PAGO.map(m => <th key={m}>{m.toUpperCase()}</th>)}
             </tr>
           </thead>
           <tbody>
-            {filtradas.map(f => (
-              <tr key={f._id}>
-                <td>{f.numero_factura}</td>
-                <td>{new Date(f.createdAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                <td>{f.id_cliente ? `${f.id_cliente.nombre} ${f.id_cliente.apellido}` : 'Consumidor Final'}</td>
-                <td>{f.metodo_pago}</td>
-                <td>{formatCol(f.total_pagado)}</td>
-                {METODOS_PAGO.map(m => <td key={m} align="center">{f.metodo_pago === m ? formatCol(f.total_pagado) : '$0'}</td>)}
-              </tr>
-            ))}
+            {filtradas.map(f => {
+              const pagosPorMetodo = agruparPagosFactura(f);
+
+              return (
+                <tr key={f._id}>
+                  <td>{f.numero_factura}</td>
+                  <td>{new Date(f.createdAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                  <td>{f.id_cliente ? `${f.id_cliente.nombre} ${f.id_cliente.apellido}` : 'Consumidor Final'}</td>
+                  <td>{nombreFormaPago(f)}</td>
+                  <td>{formatCol(f.total_pagado)}</td>
+                  <td>{textoPropinasFactura(f)}</td>
+                  {METODOS_PAGO.map(m => {
+                    const pago = pagosPorMetodo[m];
+                    return <td key={m} align="center">{pago.montos.length ? pago.montos.map(formatCol).join(' / ') : '$0'}</td>;
+                  })}
+                </tr>
+              );
+            })}
             <tr className="tr">
               <td colSpan={4} style={{ textAlign: 'right' }}>TOTALES</td>
               <td>{formatCol(globalesIngreso.total)}</td>
+              <td>{formatCol(globalesIngreso.propina)}</td>
               {METODOS_PAGO.map(m => <td key={m} align="center">{formatCol(globalesIngreso[m])}</td>)}
             </tr>
           </tbody>
