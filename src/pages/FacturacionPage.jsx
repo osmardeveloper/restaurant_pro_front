@@ -78,6 +78,9 @@ const FacturacionPage = () => {
   const [filtroGeneral, setFiltroGeneral] = useState('');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
+  const [filtroMetodoPago, setFiltroMetodoPago] = useState('todos');
+  const [filtroPropinas, setFiltroPropinas] = useState('todas');
+  const [filtroMetodoPropina, setFiltroMetodoPropina] = useState('todos');
   
   // Estados para pestaña de Utilidad
   const [fechaUtilDesde, setFechaUtilDesde] = useState('');
@@ -784,26 +787,54 @@ const FacturacionPage = () => {
       {tab === 2 && (
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
           <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <TextField
                 fullWidth size="small" label="Buscar P/Cliente o N° Factura" placeholder="Cédula, nombre o ID..."
                 value={filtroGeneral} onChange={e => setFiltroGeneral(e.target.value)}
               />
             </Grid>
-            <Grid item xs={6} md={3}>
+            <Grid item xs={6} md={2}>
               <TextField
                 fullWidth size="small" label="Desde" type="date" InputLabelProps={{ shrink: true }}
                 value={fechaDesde} onChange={e => setFechaDesde(e.target.value)}
               />
             </Grid>
-            <Grid item xs={6} md={3}>
+            <Grid item xs={6} md={2}>
               <TextField
                 fullWidth size="small" label="Hasta" type="date" InputLabelProps={{ shrink: true }}
                 value={fechaHasta} onChange={e => setFechaHasta(e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} md={2}>
-              <Button fullWidth variant="outlined" color="error" onClick={() => { setFiltroGeneral(''); setFechaDesde(''); setFechaHasta(''); }}>
+            <Grid item xs={12} sm={4} md={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Método de Pago</InputLabel>
+                <Select value={filtroMetodoPago} label="Método de Pago" onChange={e => setFiltroMetodoPago(e.target.value)}>
+                  <MenuItem value="todos">Todos</MenuItem>
+                  {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={4} md={1.5}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Propinas</InputLabel>
+                <Select value={filtroPropinas} label="Propinas" onChange={e => setFiltroPropinas(e.target.value)}>
+                  <MenuItem value="todas">Todas</MenuItem>
+                  <MenuItem value="con">Con propina</MenuItem>
+                  <MenuItem value="sin">Sin propina</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={4} md={1.5}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Método Propina</InputLabel>
+                <Select value={filtroMetodoPropina} label="Método Propina" onChange={e => setFiltroMetodoPropina(e.target.value)}>
+                  <MenuItem value="todos">Todos</MenuItem>
+                  {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={12}>
+              <Button variant="outlined" color="error" onClick={() => { setFiltroGeneral(''); setFechaDesde(''); setFechaHasta(''); setFiltroMetodoPago('todos'); setFiltroPropinas('todas'); setFiltroMetodoPropina('todos'); }}>
                 Limpiar Filtros
               </Button>
             </Grid>
@@ -823,6 +854,22 @@ const FacturacionPage = () => {
               }
               if (match && fechaHasta) {
                 match = new Date(f.createdAt) <= new Date(fechaHasta + 'T23:59:59');
+              }
+              const pagosFactura = f.pagos_parciales?.length
+                ? f.pagos_parciales
+                : [{ metodo_pago: f.metodo_pago, monto: f.total_pagado }];
+              const propinasFactura = f.propinas || [];
+              if (match && filtroMetodoPago !== 'todos') {
+                match = pagosFactura.some(pago => pago.metodo_pago === filtroMetodoPago);
+              }
+              if (match && filtroPropinas === 'con') {
+                match = propinasFactura.length > 0;
+              }
+              if (match && filtroPropinas === 'sin') {
+                match = propinasFactura.length === 0;
+              }
+              if (match && filtroMetodoPropina !== 'todos') {
+                match = propinasFactura.some(propina => propina.metodo_pago === filtroMetodoPropina);
               }
               return match;
             })}
@@ -1165,14 +1212,43 @@ const FacturacionPage = () => {
 
 // --- Subcomponente de Tabla para simplificar renderizado ---
 const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
-  const sumaTotal = facturas.reduce((sum, f) => sum + (f.total_pagado || 0), 0);
   const [facturaDetalle, setFacturaDetalle] = useState(null);
+  const formatoCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
   const obtenerMetodoPago = (factura) => {
     if (factura.metodo_pago !== 'dividido') return factura.metodo_pago;
 
     const metodos = [...new Set((factura.pagos_parciales || []).map(pago => pago.metodo_pago).filter(Boolean))];
     return metodos.length ? metodos.join(', ') : 'dividido';
   };
+  const obtenerPagosFactura = (factura) => (
+    factura.pagos_parciales?.length
+      ? factura.pagos_parciales
+      : [{ metodo_pago: factura.metodo_pago, monto: factura.total_pagado }]
+  );
+  const sumaTotal = facturas.reduce((sum, f) => sum + (f.total_pagado || 0), 0);
+  const resumenPagos = METODOS_PAGO
+    .map(metodo => ({
+      metodo: metodo.value,
+      label: metodo.label,
+      total: facturas.reduce((sum, factura) => (
+        sum + obtenerPagosFactura(factura)
+          .filter(pago => pago.metodo_pago === metodo.value)
+          .reduce((acc, pago) => acc + (pago.monto || 0), 0)
+      ), 0)
+    }))
+    .filter(item => item.total > 0);
+  const resumenPropinas = METODOS_PAGO
+    .map(metodo => ({
+      metodo: metodo.value,
+      label: metodo.label,
+      total: facturas.reduce((sum, factura) => (
+        sum + (factura.propinas || [])
+          .filter(propina => propina.metodo_pago === metodo.value)
+          .reduce((acc, propina) => acc + (propina.monto || 0), 0)
+      ), 0)
+    }))
+    .filter(item => item.total > 0);
+  const sumaPropinas = resumenPropinas.reduce((sum, item) => sum + item.total, 0);
 
   return (
     <>
@@ -1183,15 +1259,14 @@ const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
               <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>No. Factura</TableCell>
               <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Fecha</TableCell>
               <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Cliente / Cédula</TableCell>
-              <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Método</TableCell>
-              <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Total</TableCell>
+              <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Total / Métodos</TableCell>
               <TableCell sx={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {facturas.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                   <ReceiptLongIcon sx={{ fontSize: 40, opacity: 0.3, display: 'block', mx: 'auto', mb: 1 }} />
                   No existen registros bajo este filtro.
                 </TableCell>
@@ -1214,12 +1289,30 @@ const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Chip label={obtenerMetodoPago(f)} size="small" variant="outlined" sx={{ textTransform: 'uppercase' }} />
-                  </TableCell>
-                  <TableCell>
-                    <Typography fontWeight="bold" color="#4caf50">
-                      {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(f.total_pagado || 0)}
-                    </Typography>
+                    <Box sx={{ minWidth: 220 }}>
+                      <Typography variant="caption" fontWeight={800} color="text.secondary">Pagos</Typography>
+                      {obtenerPagosFactura(f).map((pago, idx) => (
+                        <Box key={`${pago.metodo_pago}-${idx}`} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, py: 0.25 }}>
+                          <Chip label={pago.metodo_pago || 'Sin método'} size="small" variant="outlined" sx={{ textTransform: 'uppercase', height: 22 }} />
+                          <Typography variant="body2" fontWeight={800} color="#4caf50">
+                            {formatoCOP.format(pago.monto || 0)}
+                          </Typography>
+                        </Box>
+                      ))}
+                      {f.propinas?.length > 0 && (
+                        <Box sx={{ mt: 0.75, pt: 0.75, borderTop: '1px dashed #ffcc80' }}>
+                          <Typography variant="caption" fontWeight={800} color="#ef6c00">Propinas</Typography>
+                          {f.propinas.map((propina, idx) => (
+                            <Box key={`${propina.metodo_pago}-${idx}`} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, py: 0.25 }}>
+                              <Chip label={propina.metodo_pago || 'Sin método'} size="small" variant="outlined" sx={{ textTransform: 'uppercase', height: 22, borderColor: '#ef6c00', color: '#ef6c00' }} />
+                              <Typography variant="body2" fontWeight={800} color="#ef6c00">
+                                {formatoCOP.format(propina.monto || 0)}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
                   </TableCell>
                   <TableCell align="center">
                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
@@ -1248,11 +1341,41 @@ const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
       </TableContainer>
 
       <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #eee', mt: 1 }}>
-        <Box sx={{ border: '1px dashed #e94560', borderRadius: 2, p: 2, bgcolor: 'rgba(233,69,96,0.05)' }}>
-          <Typography variant="caption" color="#1a1a2e" display="block">RECAUDO MOSTRADO</Typography>
-          <Typography variant="h5" fontWeight={800} color="#e94560">
-            {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(sumaTotal)}
+        <Box sx={{ width: { xs: '100%', md: 560 }, border: '1px dashed #e94560', borderRadius: 2, p: 2, bgcolor: 'rgba(233,69,96,0.05)' }}>
+          <Typography variant="caption" color="#1a1a2e" display="block" fontWeight={800}>RECAUDO MOSTRADO</Typography>
+          <Typography variant="h5" fontWeight={800} color="#e94560" sx={{ mb: 1.5 }}>
+            {formatoCOP.format(sumaTotal)}
           </Typography>
+
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight={900} color="#1a1a2e" sx={{ mb: 0.5 }}>Pagos por método</Typography>
+              {resumenPagos.length ? resumenPagos.map(item => (
+                <Box key={item.metodo} sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, py: 0.25 }}>
+                  <Typography variant="body2" sx={{ textTransform: 'uppercase' }}>{item.label}</Typography>
+                  <Typography variant="body2" fontWeight={800}>{formatoCOP.format(item.total)}</Typography>
+                </Box>
+              )) : (
+                <Typography variant="body2" color="text.secondary">Sin pagos en el filtro</Typography>
+              )}
+            </Box>
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={900} color="#ef6c00" sx={{ mb: 0.5 }}>Propinas por método</Typography>
+              {resumenPropinas.length ? resumenPropinas.map(item => (
+                <Box key={item.metodo} sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, py: 0.25 }}>
+                  <Typography variant="body2" sx={{ textTransform: 'uppercase' }}>{item.label}</Typography>
+                  <Typography variant="body2" fontWeight={800} color="#ef6c00">{formatoCOP.format(item.total)}</Typography>
+                </Box>
+              )) : (
+                <Typography variant="body2" color="text.secondary">Sin propinas en el filtro</Typography>
+              )}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mt: 0.75, pt: 0.75, borderTop: '1px dashed #ffcc80' }}>
+                <Typography variant="body2" fontWeight={900} color="#ef6c00">Total propinas</Typography>
+                <Typography variant="body2" fontWeight={900} color="#ef6c00">{formatoCOP.format(sumaPropinas)}</Typography>
+              </Box>
+            </Box>
+          </Box>
         </Box>
       </Box>
 
