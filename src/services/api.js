@@ -4,8 +4,12 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: window.location.hostname === 'localhost'
+    ? 'http://localhost:5000/api'
+    : 'https://restaurant-pro-backend.onrender.com/api',
+  headers: {
+    'Content-Type': 'application/json',
+  }
 });
 
 api.interceptors.request.use(
