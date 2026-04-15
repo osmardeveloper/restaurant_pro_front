@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import { facturacionService, gastoService } from '../services/api';
+import { facturacionService, gastoService, costoService } from '../services/api';
 
 const METODOS_PAGO = ['efectivo', 'bancolombia', 'nequi', 'daviplata', 'datafono'];
 const formatCol = (val) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(val || 0);
@@ -140,6 +140,7 @@ const PRINT_STYLE = `
 const CierreCajaPage = () => {
   const [facturas, setFacturas] = useState([]);
   const [gastos, setGastos] = useState([]);
+  const [costos, setCostos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [snack, setSnack] = useState({ open: false, msg: '', severity: 'success' });
 
@@ -153,9 +154,10 @@ const CierreCajaPage = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [resFac, resGas] = await Promise.all([facturacionService.getAll(), gastoService.getAll()]);
+      const [resFac, resGas, resCos] = await Promise.all([facturacionService.getAll(), gastoService.getAll(), costoService.getAll()]);
       setFacturas(resFac.data || []);
       setGastos(resGas.data || []);
+      setCostos(resCos.data || []);
     } catch {
       setSnack({ open: true, msg: 'Error al cargar datos.', severity: 'error' });
     } finally {
@@ -165,8 +167,8 @@ const CierreCajaPage = () => {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const { filtradas, egresos } = useMemo(() => {
-    if (!fechaInicio || !fechaFin) return { filtradas: [], egresos: [] };
+  const { filtradas, egresos, costosFiltrados } = useMemo(() => {
+    if (!fechaInicio || !fechaFin) return { filtradas: [], egresos: [], costosFiltrados: [] };
     
     // Normalizar fechas para comparación (Local)
     const fInit = new Date(fechaInicio + 'T00:00:00');
@@ -175,15 +177,18 @@ const CierreCajaPage = () => {
     return {
       filtradas: facturas.filter(x => {
         const d = new Date(x.createdAt);
-        // Comparación de objetos Date es robusta si ambos se crearon/parsearon bien
         return d >= fInit && d <= fEnd;
       }),
       egresos:   gastos.filter(x => {
         const d = new Date(x.createdAt);
         return d >= fInit && d <= fEnd;
       }),
+      costosFiltrados: costos.filter(x => {
+        const d = new Date(x.createdAt);
+        return d >= fInit && d <= fEnd;
+      }),
     };
-  }, [facturas, gastos, fechaInicio, fechaFin]);
+  }, [facturas, gastos, costos, fechaInicio, fechaFin]);
 
   const globalesIngreso = useMemo(() => {
     const c = { total: 0, propina: 0 };
@@ -209,6 +214,17 @@ const CierreCajaPage = () => {
     });
     return c;
   }, [egresos]);
+
+  const globalesCostos = useMemo(() => {
+    const c = { total: 0 };
+    METODOS_PAGO.forEach(m => c[m] = 0);
+    costosFiltrados.forEach(co => {
+      const a = co.monto || 0;
+      c.total += a;
+      if (METODOS_PAGO.includes(co.metodo_pago)) c[co.metodo_pago] += a;
+    });
+    return c;
+  }, [costosFiltrados]);
 
   const RCell = ({ isHeader, children, color, align, colSpan }) => (
     <TableCell align={align || 'left'} colSpan={colSpan}
@@ -254,7 +270,7 @@ const CierreCajaPage = () => {
 
         <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid #c8e6c9', background: 'rgba(76,175,80,0.02)' }}>
           <Typography variant="subtitle1" fontWeight={700} color="success.main" textAlign="center" mb={2}>
-            TOTALES GLOBALES (INGRESOS RECAUDADOS)
+            TOTALES GLOBALES (INGRESOS RECAUDADOS Y GASTOS)
           </Typography>
           <Typography variant="caption" color="text.secondary" textAlign="center" display="block" mb={2}>
             del {formatPeriodo(fechaInicio)} al {formatPeriodo(fechaFin)}
@@ -263,10 +279,35 @@ const CierreCajaPage = () => {
             {[
               { label: 'TOTAL FACTURA', val: globalesIngreso.total, color: '#1976d2' },
               { label: 'PROPINA', val: globalesIngreso.propina, color: '#ef6c00' },
-              ...METODOS_PAGO.map(m => ({ label: m.toUpperCase(), val: globalesIngreso[m], color: '#1a1a2e' })),
+              { label: 'EFECTIVO', val: globalesIngreso.efectivo, color: '#1a1a2e' },
+              { label: 'BANCOLOMBIA', val: globalesIngreso.bancolombia, color: '#1a1a2e' },
+              { label: 'NEQUI', val: globalesIngreso.nequi, color: '#1a1a2e' },
+              { label: 'DAVIPLATA', val: globalesIngreso.daviplata, color: '#1a1a2e' },
+              { label: 'DATAFONO', val: globalesIngreso.datafono, color: '#1a1a2e' },
               { label: 'GASTOS GLOBALES', val: globalesEgreso.total, color: 'error.main' },
               { label: 'GASTOS EN EFECTIVO', val: globalesEgreso.efectivo, color: 'error.main' },
               { label: 'EFECTIVO EN CAJA', val: efectivoNeto, color: efectivoNeto >= 0 ? 'success.main' : 'error.main' },
+            ].map(({ label, val, color }) => (
+              <Grid item xs={4} md={2} key={label}>
+                <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight={600} display="block">{label}</Typography>
+                <Typography variant="h6" fontWeight={700} color={color}>{formatCol(val)}</Typography>
+              </Grid>
+            ))}
+          </Grid>
+        </Paper>
+
+        <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid #bbdefb', background: 'rgba(21,101,192,0.02)' }}>
+          <Typography variant="subtitle1" fontWeight={700} color="#1565c0" textAlign="center" mb={2}>
+            COSTOS OPERATIVOS POR MÉTODO DE PAGO
+          </Typography>
+          <Grid container spacing={2} justifyContent="center" textAlign="center">
+            {[
+              { label: 'COSTO EFECTIVO', val: globalesCostos.efectivo, color: '#1565c0' },
+              { label: 'COSTO BANCOLOMBIA', val: globalesCostos.bancolombia, color: '#1565c0' },
+              { label: 'COSTO NEQUI', val: globalesCostos.nequi, color: '#1565c0' },
+              { label: 'COSTO DAVIPLATA', val: globalesCostos.daviplata, color: '#1565c0' },
+              { label: 'COSTO DATAFONO', val: globalesCostos.datafono, color: '#1565c0' },
+              { label: 'COSTOS GLOBALES', val: globalesCostos.total, color: '#1565c0' },
             ].map(({ label, val, color }) => (
               <Grid item xs={4} md={2} key={label}>
                 <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight={600} display="block">{label}</Typography>
@@ -336,20 +377,20 @@ const CierreCajaPage = () => {
               </Table>
             </TableContainer>
 
-            <Typography variant="h6" color="error.main" fontWeight={700} mb={1}>Egresos</Typography>
+            <Typography variant="h6" color="error.main" fontWeight={700} mb={1}>Gastos</Typography>
             <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid rgba(0,0,0,0.08)', mb: 4 }}>
               <Table size="small">
                 <TableHead sx={{ bgcolor: '#fafafa' }}>
                   <TableRow>
                     <RCell isHeader>Egreso No.</RCell><RCell isHeader>Fecha</RCell>
                     <RCell isHeader>Nombre</RCell><RCell isHeader>Descripción</RCell>
-                    {METODOS_PAGO.map(m => <RCell isHeader align="center" key={m}>{m.toUpperCase()}</RCell>)}
+                    <RCell isHeader>MÉTODO/MONTO</RCell>
                     <RCell isHeader align="right">Total</RCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {egresos.length === 0
-                    ? <TableRow><TableCell colSpan={10} align="center" sx={{ py: 3 }}>No hay egresos en este periodo</TableCell></TableRow>
+                    ? <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3 }}>No hay egresos en este periodo</TableCell></TableRow>
                     : egresos.map(g => (
                       <TableRow key={g._id} hover>
                         <RCell>{g.numero_gasto || '...'}</RCell>
@@ -359,15 +400,60 @@ const CierreCajaPage = () => {
                         </RCell>
                         <RCell>{g.nombre}</RCell>
                         <RCell>{g.descripcion}</RCell>
-                        {METODOS_PAGO.map(m => <RCell align="center" key={m}>{g.metodo_pago === m ? formatCol(g.monto) : '$ 0'}</RCell>)}
+                        <RCell>
+                          <Typography variant="body2" fontWeight={600}>
+                            {formatCol(g.monto)} {g.metodo_pago}
+                          </Typography>
+                        </RCell>
                         <RCell align="right" color="error.main">{formatCol(g.monto)}</RCell>
                       </TableRow>
                     ))
                   }
                   <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                     <RCell isHeader colSpan={4} align="right">TOTALES EGRESOS</RCell>
-                    {METODOS_PAGO.map(m => <RCell isHeader align="center" key={m}>{formatCol(globalesEgreso[m])}</RCell>)}
+                    <RCell isHeader></RCell>
                     <RCell isHeader align="right" color="error.main">{formatCol(globalesEgreso.total)}</RCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <Typography variant="h6" color="#1565c0" fontWeight={700} mb={1} mt={2}>Costos Operativos</Typography>
+            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid rgba(0,0,0,0.08)', mb: 4 }}>
+              <Table size="small">
+                <TableHead sx={{ bgcolor: '#fafafa' }}>
+                  <TableRow>
+                    <RCell isHeader>Costo No.</RCell><RCell isHeader>Fecha</RCell>
+                    <RCell isHeader>Nombre</RCell><RCell isHeader>Descripción</RCell>
+                    <RCell isHeader>MÉTODO/MONTO</RCell>
+                    <RCell isHeader align="right">Total</RCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {costosFiltrados.length === 0
+                    ? <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3 }}>No hay costos registrados en este periodo</TableCell></TableRow>
+                    : costosFiltrados.map(c => (
+                      <TableRow key={c._id} hover>
+                        <RCell>{c.numero_costo || '...'}</RCell>
+                        <RCell>
+                          <Typography variant="body2">{new Date(c.createdAt).toLocaleDateString()}</Typography>
+                          <Typography variant="caption" color="text.secondary">{new Date(c.createdAt).toLocaleTimeString()}</Typography>
+                        </RCell>
+                        <RCell>{c.nombre}</RCell>
+                        <RCell>{c.descripcion}</RCell>
+                        <RCell>
+                          <Typography variant="body2" fontWeight={600}>
+                            {formatCol(c.monto)} {c.metodo_pago}
+                          </Typography>
+                        </RCell>
+                        <RCell align="right" color="#1565c0">{formatCol(c.monto)}</RCell>
+                      </TableRow>
+                    ))
+                  }
+                  <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                    <RCell isHeader colSpan={4} align="right">TOTALES COSTOS</RCell>
+                    <RCell isHeader></RCell>
+                    <RCell isHeader align="right" color="#1565c0">{formatCol(globalesCostos.total)}</RCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -447,12 +533,12 @@ const CierreCajaPage = () => {
         </table>
 
         {/* Tabla Egresos */}
-        <p className="st st-red">Egresos</p>
+        <p className="st st-red">Gastos</p>
         <table className="data">
           <thead>
             <tr>
               <th>Egreso No.</th><th>Fecha</th><th>Nombre</th><th>Descripción</th>
-              {METODOS_PAGO.map(m => <th key={m}>{m.toUpperCase()}</th>)}
+              <th>Método/Monto</th>
               <th>Total</th>
             </tr>
           </thead>
@@ -463,14 +549,43 @@ const CierreCajaPage = () => {
                 <td>{new Date(g.createdAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}</td>
                 <td>{g.nombre}</td>
                 <td>{g.descripcion}</td>
-                {METODOS_PAGO.map(m => <td key={m} align="center">{g.metodo_pago === m ? formatCol(g.monto) : '$0'}</td>)}
+                <td>{g.metodo_pago} - {formatCol(g.monto)}</td>
                 <td className="c-red">{formatCol(g.monto)}</td>
               </tr>
             ))}
             <tr className="tr">
               <td colSpan={4} style={{ textAlign: 'right' }}>TOTALES</td>
-              {METODOS_PAGO.map(m => <td key={m} align="center">{formatCol(globalesEgreso[m])}</td>)}
+              <td></td>
               <td className="c-red">{formatCol(globalesEgreso.total)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Tabla Costos */}
+        <p className="st st-blue">Costos Operativos</p>
+        <table className="data">
+          <thead>
+            <tr>
+              <th>Costo No.</th><th>Fecha</th><th>Nombre</th><th>Descripción</th>
+              <th>Método/Monto</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {costosFiltrados.map(c => (
+              <tr key={c._id}>
+                <td>{c.numero_costo}</td>
+                <td>{new Date(c.createdAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                <td>{c.nombre}</td>
+                <td>{c.descripcion}</td>
+                <td>{c.metodo_pago} - {formatCol(c.monto)}</td>
+                <td className="c-blue">{formatCol(c.monto)}</td>
+              </tr>
+            ))}
+            <tr className="tr">
+              <td colSpan={4} style={{ textAlign: 'right' }}>TOTALES</td>
+              <td></td>
+              <td className="c-blue">{formatCol(globalesCostos.total)}</td>
             </tr>
           </tbody>
         </table>

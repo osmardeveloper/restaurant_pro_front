@@ -35,6 +35,7 @@ const MODULOS_PERMISOS = [
   { key: 'comandas',     label: 'Comandas',       icon: '🧾' },
   { key: 'facturacion',  label: 'Facturación',    icon: '💵' },
   { key: 'gastos',       label: 'Gastos',         icon: '📉' },
+  { key: 'costos',       label: 'Costos',         icon: '💰' },
   { key: 'inventario',   label: 'Inventario',     icon: '📦' },
   { key: 'cierre_caja',  label: 'Cierre de Caja', icon: '🏦' },
 ];

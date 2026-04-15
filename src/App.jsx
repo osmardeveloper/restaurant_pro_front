@@ -16,6 +16,7 @@ import ClientesPage     from './pages/ClientesPage';
 import TomarPedidoPage  from './pages/TomarPedidoPage';
 import FacturacionPage  from './pages/FacturacionPage';
 import GastosPage       from './pages/GastosPage';
+import CostosPage       from './pages/CostosPage';
 import CierreCajaPage  from './pages/CierreCajaPage';
 import InventarioPage  from './pages/InventarioPage';
 
@@ -47,6 +48,7 @@ function App() {
             <Route path="comandas"     element={<ProtectedRoute modulo="comandas"><ComandasPage /></ProtectedRoute>} />
             <Route path="facturacion"  element={<ProtectedRoute modulo="facturacion"><FacturacionPage /></ProtectedRoute>} />
             <Route path="gastos"       element={<ProtectedRoute modulo="gastos"><GastosPage /></ProtectedRoute>} />
+            <Route path="costos"       element={<ProtectedRoute modulo="costos"><CostosPage /></ProtectedRoute>} />
             <Route path="inventario"   element={<ProtectedRoute modulo="inventario"><InventarioPage /></ProtectedRoute>} />
             <Route path="cierre-caja"  element={<ProtectedRoute modulo="cierre_caja"><CierreCajaPage /></ProtectedRoute>} />
           </Route>

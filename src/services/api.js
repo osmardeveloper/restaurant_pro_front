@@ -90,6 +90,13 @@ export const gastoService = {
   remove: (id, masterKey) => api.delete(`/gastos/${id}`, { headers: { 'x-master-key': masterKey } }),
 };
 
+export const costoService = {
+  getAll: () => api.get('/costos'),
+  create: (datos) => api.post('/costos', datos),
+  update: (id, datos) => api.put(`/costos/${id}`, datos),
+  remove: (id, masterKey) => api.delete(`/costos/${id}`, { headers: { 'x-master-key': masterKey } }),
+};
+
 export const configuracionService = {
   getByUser: (id_usuario) => api.get(`/configuraciones/usuario/${id_usuario}`),
   save: (datos) => api.post('/configuraciones', datos),

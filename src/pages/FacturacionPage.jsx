@@ -22,7 +22,7 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import TableBarIcon from '@mui/icons-material/TableBar';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import { productoService, clienteService, facturacionService, mesaService, comandaService } from '../services/api';
+import { productoService, clienteService, facturacionService, mesaService, comandaService, costoService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const METODOS_PAGO = [
@@ -50,6 +50,7 @@ const FacturacionPage = () => {
   const [platos, setPlatos] = useState([]);
   const [clientes, setClientes] = useState([]);
   const [mesas, setMesas] = useState([]);
+  const [costos, setCostos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingMesa, setLoadingMesa] = useState(false);
 
@@ -100,16 +101,18 @@ const FacturacionPage = () => {
   const fetchDatos = useCallback(async () => {
     setLoading(true);
     try {
-      const [resC, resP, resM, resF] = await Promise.all([
+      const [resC, resP, resM, resF, resCos] = await Promise.all([
         clienteService.getAll(),
         productoService.getAll(),
         mesaService.getAll(),
         facturacionService.getAll(),
+        costoService.getAll(),
       ]);
       setClientes(resC.data);
       setPlatos(resP.data);
       setMesas(resM.data);
       setFacturas(resF.data);
+      setCostos(resCos.data);
 
       // Si venimos de la pantalla de comandas (navegación directa)
       if (navState?.comandaId) {
@@ -805,16 +808,16 @@ const FacturacionPage = () => {
                 value={fechaHasta} onChange={e => setFechaHasta(e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} sm={4} md={2}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Método de Pago</InputLabel>
+            <Grid item xs={12} sm={4} md={2.5}>
+              <FormControl fullWidth size="small" style={{minWidth: "150px"}}>
+                <InputLabel>Méteodo de Pago</InputLabel>
                 <Select value={filtroMetodoPago} label="Método de Pago" onChange={e => setFiltroMetodoPago(e.target.value)}>
                   <MenuItem value="todos">Todos</MenuItem>
                   {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={4} md={1.5}>
+            <Grid item xs={12} sm={4} md={2.5}>
               <FormControl fullWidth size="small">
                 <InputLabel>Propinas</InputLabel>
                 <Select value={filtroPropinas} label="Propinas" onChange={e => setFiltroPropinas(e.target.value)}>
@@ -824,8 +827,8 @@ const FacturacionPage = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={4} md={1.5}>
-              <FormControl fullWidth size="small">
+            <Grid item xs={12} sm={4} md={2.5}>
+              <FormControl fullWidth size="small" style={{minWidth: "150px"}}>
                 <InputLabel>Método Propina</InputLabel>
                 <Select value={filtroMetodoPropina} label="Método Propina" onChange={e => setFiltroMetodoPropina(e.target.value)}>
                   <MenuItem value="todos">Todos</MenuItem>

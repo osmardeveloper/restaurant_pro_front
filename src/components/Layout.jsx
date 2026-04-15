@@ -20,6 +20,7 @@ import AssignmentIndIcon  from '@mui/icons-material/AssignmentInd';
 import PostAddIcon        from '@mui/icons-material/PostAdd';
 import PointOfSaleIcon    from '@mui/icons-material/PointOfSale';
 import RequestQuoteIcon   from '@mui/icons-material/RequestQuote';
+import AttachMoneyIcon    from '@mui/icons-material/AttachMoney';
 import AssessmentIcon     from '@mui/icons-material/Assessment';
 import { useAuth }        from '../context/AuthContext';
 import { configuracionService } from '../services/api';
@@ -27,15 +28,16 @@ import { configuracionService } from '../services/api';
 const DRAWER_WIDTH = 260;
 
 const navItems = [
+  { key: 'mesas',        label: 'Mesas',        path: '/mesas',        icon: <TableBarIcon /> },
   { key: 'usuarios',     label: 'Usuarios',     path: '/usuarios',     icon: <PeopleIcon /> },
   { key: 'clientes',     label: 'Clientes',     path: '/clientes',     icon: <AssignmentIndIcon /> },
   { key: 'productos',    label: 'Productos',    path: '/productos',    icon: <InventoryIcon /> },
   { key: 'platos',       label: 'Platos',       icon: <RestaurantMenuIcon />, path: '/platos' },
-  { key: 'mesas',        label: 'Mesas',        path: '/mesas',        icon: <TableBarIcon /> },
   { key: 'tomar_pedido', label: 'Tomar Pedido', path: '/tomar-pedido', icon: <PostAddIcon /> },
   { key: 'comandas',     label: 'Comandas',     path: '/comandas',     icon: <ReceiptLongIcon /> },
   { key: 'facturacion',  label: 'Facturación',  path: '/facturacion',  icon: <PointOfSaleIcon /> },
   { key: 'gastos',       label: 'Gastos',       path: '/gastos',       icon: <RequestQuoteIcon /> },
+  { key: 'costos',       label: 'Costos',       path: '/costos',       icon: <AttachMoneyIcon /> },
   { key: 'inventario',   label: 'Inventario',   path: '/inventario',   icon: <InventoryIcon /> },
   { key: 'cierre_caja',  label: 'Cierre de Caja', path: '/cierre-caja', icon: <AssessmentIcon /> },
 ];

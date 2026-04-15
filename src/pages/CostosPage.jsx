@@ -1,5 +1,5 @@
 // ============================================================
-// src/pages/GastosPage.jsx — Gestión de Egresos
+// src/pages/CostosPage.jsx — Gestión de Costos
 // ============================================================
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
@@ -16,7 +16,7 @@ import ViewListIcon from '@mui/icons-material/ViewList';
 import TodayIcon from '@mui/icons-material/Today';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 // Importamos el hook de sesion y el api core
-import { gastoService } from '../services/api';
+import { costoService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const METODOS_PAGO = [
@@ -27,10 +27,10 @@ const METODOS_PAGO = [
   { value: 'datafono', label: 'Datáfono (Tarjeta)' }
 ];
 
-const GastosPage = () => {
+const CostosPage = () => {
   const { usuario } = useAuth();
   const [tab, setTab] = useState(0);
-  const [gastos, setGastos] = useState([]);
+  const [costos, setCostos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [snack, setSnack] = useState({ open: false, msg: '', severity: 'success' });
 
@@ -48,19 +48,19 @@ const GastosPage = () => {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
-  const fetchGastos = useCallback(async () => {
+  const fetchCostos = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await gastoService.getAll();
-      setGastos(res.data);
+      const res = await costoService.getAll();
+      setCostos(res.data);
     } catch {
-      setSnack({ open: true, msg: 'Error al cargar gastos.', severity: 'error' });
+      setSnack({ open: true, msg: 'Error al cargar costos.', severity: 'error' });
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchGastos(); }, [fetchGastos]);
+  useEffect(() => { fetchCostos(); }, [fetchCostos]);
 
   const abrirNuevo = () => {
     setEditId(null);
@@ -83,23 +83,23 @@ const GastosPage = () => {
     
     try {
       if (editId) {
-        await gastoService.update(editId, { 
+        await costoService.update(editId, { 
           ...form, 
           monto: Number(form.monto) 
         });
-        setSnack({ open: true, msg: 'Gasto actualizado correctamente.', severity: 'success' });
+        setSnack({ open: true, msg: 'Costo actualizado correctamente.', severity: 'success' });
       } else {
-        await gastoService.create({ 
+        await costoService.create({ 
           ...form, 
           monto: Number(form.monto),
           id_usuario: usuario?.id || usuario?._id 
         });
-        setSnack({ open: true, msg: 'Gasto registrado correctamente.', severity: 'success' });
+        setSnack({ open: true, msg: 'Costo registrado correctamente.', severity: 'success' });
       }
       setModalOpen(false);
       setForm({ nombre: '', descripcion: '', metodo_pago: 'efectivo', monto: '' });
-      setTab(0); // Asegurar que vemos el gasto en la pestaña de "Hoy"
-      fetchGastos();
+      setTab(0); // Asegurar que vemos el costo en la pestaña de "Hoy"
+      fetchCostos();
     } catch (err) {
       setSnack({ open: true, msg: err.response?.data?.message || 'Error al guardar.', severity: 'error' });
     }
@@ -117,18 +117,18 @@ const GastosPage = () => {
       return;
     }
     try {
-      await gastoService.remove(deleteId, masterKey);
-      setSnack({ open: true, msg: 'Gasto eliminado correctamente.', severity: 'success' });
+      await costoService.remove(deleteId, masterKey);
+      setSnack({ open: true, msg: 'Costo eliminado correctamente.', severity: 'success' });
       setDeleteDialogOpen(false);
-      fetchGastos();
+      fetchCostos();
     } catch (err) {
       setSnack({ open: true, msg: err.response?.data?.message || 'Clave incorrecta o error al eliminar.', severity: 'error' });
     }
   };
 
   // ── FILTRADO DINÁMICO ──
-  const gastosFiltrados = useMemo(() => {
-    return gastos.filter(g => {
+  const costosFiltrados = useMemo(() => {
+    return costos.filter(g => {
       if (tab === 0) {
         // Tab Hoy
         const hoy = new Date().toLocaleDateString();
@@ -141,9 +141,9 @@ const GastosPage = () => {
         return match;
       }
     });
-  }, [gastos, tab, fechaDesde, fechaHasta]);
+  }, [costos, tab, fechaDesde, fechaHasta]);
 
-  const totalGastado = gastosFiltrados.reduce((acc, curr) => acc + (curr.monto || 0), 0);
+  const totalGastado = costosFiltrados.reduce((acc, curr) => acc + (curr.monto || 0), 0);
 
   return (
     <Box>
@@ -154,8 +154,8 @@ const GastosPage = () => {
             <RequestQuoteIcon sx={{ color: '#fff', display: 'block' }} />
           </Box>
           <Box>
-            <Typography variant="h5" fontWeight={700} color="#1a1a2e">Gestión de Gastos</Typography>
-            <Typography variant="body2" color="text.secondary">Control de egresos y salidas de caja</Typography>
+            <Typography variant="h5" fontWeight={700} color="#1a1a2e">Gestión de Costos</Typography>
+            <Typography variant="body2" color="text.secondary">Control de costos relacionados</Typography>
           </Box>
         </Box>
         <Button 
@@ -163,7 +163,7 @@ const GastosPage = () => {
           onClick={abrirNuevo}
           sx={{ background: 'linear-gradient(135deg, #2196f3, #1976d2)', fontWeight: 700, borderRadius: 2, px: 3 }}
         >
-          Nuevo Gasto
+          Nuevo Costo
         </Button>
       </Box>
 
@@ -171,8 +171,8 @@ const GastosPage = () => {
       <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: '#fafafa' }}>
           <Tabs value={tab} onChange={(e, val) => setTab(val)} textColor="primary" indicatorColor="primary">
-            <Tab icon={<TodayIcon />} label="Gastos de hoy" iconPosition="start" sx={{ fontWeight: 600 }} />
-            <Tab icon={<ViewListIcon />} label="Gastos por periodo" iconPosition="start" sx={{ fontWeight: 600 }} />
+            <Tab icon={<TodayIcon />} label="Costos de hoy" iconPosition="start" sx={{ fontWeight: 600 }} />
+            <Tab icon={<ViewListIcon />} label="Costos por periodo" iconPosition="start" sx={{ fontWeight: 600 }} />
           </Tabs>
         </Box>
 
@@ -208,7 +208,7 @@ const GastosPage = () => {
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ background: 'rgba(0,0,0,0.02)' }}>
-                    <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>EGRESO NO.</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>COSTO NO.</TableCell>
                     <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>FECHA</TableCell>
                     <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>NOMBRE</TableCell>
                     <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>DESCRIPCIÓN</TableCell>
@@ -218,16 +218,16 @@ const GastosPage = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {gastosFiltrados.length === 0 ? (
+                  {costosFiltrados.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>
-                        No hay gastos registrados en este periodo
+                        No hay costos registrados en este periodo
                       </TableCell>
                     </TableRow>
                   ) : (
-                    gastosFiltrados.map(g => (
+                    costosFiltrados.map(g => (
                       <TableRow key={g._id} hover>
-                        <TableCell><Typography fontWeight="bold">#{g.numero_gasto}</Typography></TableCell>
+                        <TableCell><Typography fontWeight="bold">#{g.numero_costo}</Typography></TableCell>
                         <TableCell>{new Date(g.createdAt).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
                         <TableCell><Typography variant="body2" fontWeight={600}>{g.nombre}</Typography></TableCell>
                         <TableCell><Typography variant="body2" color="text.secondary">{g.descripcion || '—'}</Typography></TableCell>
@@ -262,7 +262,7 @@ const GastosPage = () => {
 
         <Box sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #eee' }}>
            <Paper elevation={0} sx={{ border: '1px solid #e0e0e0', borderRadius: 2, p: 2, bgcolor: '#fafafa', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography variant="body1" fontWeight={700} color="text.secondary">TOTAL GASTADO:</Typography>
+              <Typography variant="body1" fontWeight={700} color="text.secondary">TOTAL COSTOS:</Typography>
               <Typography variant="h5" fontWeight={800} color="error.main">
                 {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalGastado)}
               </Typography>
@@ -274,11 +274,11 @@ const GastosPage = () => {
       <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
         <form onSubmit={handleSubmit}>
           <DialogTitle sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', color: '#fff', fontWeight: 700 }}>
-            {editId ? 'Editar Egreso' : 'Registrar Nuevo Egreso'}
+            {editId ? 'Editar Costo' : 'Registrar Nuevo Costo'}
           </DialogTitle>
           <DialogContent sx={{ p: 3, mt: 2 }}>
             <TextField 
-              fullWidth label="Nombre del Gasto" size="small" sx={{ mb: 2, mt: 1 }} required
+              fullWidth label="Nombre del Costo" size="small" sx={{ mb: 2, mt: 1 }} required
               value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })}
             />
             <TextField 
@@ -298,7 +298,7 @@ const GastosPage = () => {
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3 }}>
             <Button onClick={() => setModalOpen(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
-            <Button type="submit" variant="contained" sx={{ borderRadius: 2 }}>Guardar Gasto</Button>
+            <Button type="submit" variant="contained" sx={{ borderRadius: 2 }}>Guardar Costo</Button>
           </DialogActions>
         </form>
       </Dialog>
@@ -330,4 +330,4 @@ const GastosPage = () => {
   );
 };
 
-export default GastosPage;
+export default CostosPage;
