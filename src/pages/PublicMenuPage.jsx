@@ -6,7 +6,7 @@ import {
   Box, Container, Typography, Card, CardContent, Chip, 
   Grid, Paper, Tab, Tabs, Skeleton
 } from '@mui/material';
-import { productoService, categoriasProductosService } from '../services/api';
+import { publicProductoService, publicCategoriasService } from '../services/api';
 
 const CATEGORIAS_ESTATICAS = [
   { value: 'platos_principales', label: 'Platos Principales' },
@@ -32,7 +32,7 @@ const PublicMenuPage = () => {
     try {
       // Cargar categorías
       try {
-        const resCategorias = await categoriasProductosService.getAll();
+        const resCategorias = await publicCategoriasService.getAll();
         const categoriasNuevas = resCategorias.data
           .filter(c => c.activa)
           .map(c => ({ value: c.detalles.value, label: c.detalles.label }));
@@ -45,7 +45,7 @@ const PublicMenuPage = () => {
       }
 
       // Cargar productos
-      const res = await productoService.getAll();
+      const res = await publicProductoService.getAll();
       setProductos(res.data);
     } catch (error) {
       console.error('Error al cargar menú:', error);

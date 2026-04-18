@@ -27,8 +27,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Solo redirigir a /login si es error 401 Y no estamos ya en la página de login
-    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
+    // Solo redirigir a /login si es error 401 Y no estamos ya en la página de login/menu
+    if (error.response?.status === 401 && !window.location.pathname.includes('/login') && !window.location.pathname.includes('/menu')) {
       localStorage.removeItem('token');
       localStorage.removeItem('usuario');
       window.location.href = '/login';
@@ -36,6 +36,16 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Instancia pública para rutas sin autenticación (sin interceptor de redirect)
+const publicApi = axios.create({
+  baseURL: isDevelopment
+    ? 'http://localhost:5000/api'
+    : 'https://restaurant-pro-backend.onrender.com/api',
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
 
 export const authService = {
   login: (datos) => api.post('/auth/login', datos),
@@ -117,6 +127,17 @@ export const configuracionService = {
 export const movimientoService = {
   getAll: (params) => api.get('/inventario', { params }),
   create: (datos)  => api.post('/inventario', datos),
+};
+
+// ============================================================
+// Servicios Públicos (para rutas sin autenticación)
+// ============================================================
+export const publicProductoService = {
+  getAll: (tipo) => publicApi.get('/productos', { params: { tipo } }),
+};
+
+export const publicCategoriasService = {
+  getAll: () => publicApi.get('/categorias-productos'),
 };
 
 export default api;
