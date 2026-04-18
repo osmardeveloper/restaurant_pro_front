@@ -199,7 +199,9 @@ const ProductosPage = () => {
       setModalNuevaCategoria(false);
       await fetchCategorias(); // Recargar categorías
     } catch (err) {
-      showSnack(err.response?.data?.message || 'Error al crear la categoría.', 'error');
+      console.error('Error detallado:', err.response?.data || err.message);
+      const mensajeError = err.response?.data?.message || err.message || 'Error al crear la categoría.';
+      showSnack(mensajeError, 'error');
     } finally {
       setLoadingGuardarCategoria(false);
     }
