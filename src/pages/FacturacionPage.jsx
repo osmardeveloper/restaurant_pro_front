@@ -507,11 +507,14 @@ const FacturacionPage = () => {
 
   const sumaPagos = pagosPartiales.reduce((sum, p) => sum + (p.monto || 0), 0);
   const faltaPagar = totalCaja - sumaPagos;
-  const puedeFacturar = sumaPagos === totalCaja && pagosPartiales.every(p => p.metodo_pago);
+  const puedeFacturar = sumaPagos >= totalCaja && pagosPartiales.every(p => p.metodo_pago);
 
   const manejarFacturacionDividida = async () => {
     if (!puedeFacturar) {
-      showSnack('Debes completar todos los métodos de pago y que sumen exactamente el total.', 'warning');
+      const razon = sumaPagos < totalCaja 
+        ? `Aún faltan $${new Intl.NumberFormat('es-CO').format(Math.max(0, faltaPagar))}`
+        : 'Debes asignar un método de pago a cada persona';
+      showSnack(razon, 'warning');
       return;
     }
 
