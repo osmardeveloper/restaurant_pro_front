@@ -3,8 +3,11 @@
 // ============================================================
 import axios from 'axios';
 
+// Detectar si estamos en desarrollo o producción
+const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
 const api = axios.create({
-  baseURL: window.location.hostname === 'localhost'
+  baseURL: isDevelopment
     ? 'http://localhost:5000/api'
     : 'https://restaurant-pro-backend.onrender.com/api',
   headers: {
@@ -24,7 +27,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Solo redirigir a /login si es error 401 Y no estamos ya en la página de login
+    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
       localStorage.removeItem('token');
       localStorage.removeItem('usuario');
       window.location.href = '/login';
