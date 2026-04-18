@@ -12,9 +12,11 @@ import MenuIcon           from '@mui/icons-material/Menu';
 import PeopleIcon         from '@mui/icons-material/People';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import TableBarIcon       from '@mui/icons-material/TableBar';
+import LocalShippingIcon  from '@mui/icons-material/LocalShipping';
 import ReceiptLongIcon    from '@mui/icons-material/ReceiptLong';
 import LogoutIcon         from '@mui/icons-material/Logout';
 import InventoryIcon      from '@mui/icons-material/Inventory';
+import LocalDiningIcon    from '@mui/icons-material/LocalDining';
 import DashboardIcon      from '@mui/icons-material/Dashboard';
 import AssignmentIndIcon  from '@mui/icons-material/AssignmentInd';
 import PostAddIcon        from '@mui/icons-material/PostAdd';
@@ -29,10 +31,10 @@ const DRAWER_WIDTH = 260;
 
 const navItems = [
   { key: 'mesas',        label: 'Mesas',        path: '/mesas',        icon: <TableBarIcon /> },
+  { key: 'domicilios',   label: 'Domicilios',   path: '/domicilios',   icon: <LocalShippingIcon /> },
   { key: 'usuarios',     label: 'Usuarios',     path: '/usuarios',     icon: <PeopleIcon /> },
   { key: 'clientes',     label: 'Clientes',     path: '/clientes',     icon: <AssignmentIndIcon /> },
-  { key: 'productos',    label: 'Productos',    path: '/productos',    icon: <InventoryIcon /> },
-  { key: 'platos',       label: 'Platos',       icon: <RestaurantMenuIcon />, path: '/platos' },
+  { key: 'productos',    label: 'Platos y Productos',    path: '/productos',    icon: <LocalDiningIcon /> },
   { key: 'tomar_pedido', label: 'Tomar Pedido', path: '/tomar-pedido', icon: <PostAddIcon /> },
   { key: 'comandas',     label: 'Comandas',     path: '/comandas',     icon: <ReceiptLongIcon /> },
   { key: 'facturacion',  label: 'Facturación',  path: '/facturacion',  icon: <PointOfSaleIcon /> },

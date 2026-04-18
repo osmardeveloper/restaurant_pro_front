@@ -6,7 +6,7 @@ import {
   Box, Button, Typography, Paper, Grid, Divider, Autocomplete, TextField,
   IconButton, List, ListItem, ListItemText, ListItemSecondaryAction,
   Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Chip,
-  InputAdornment, Card, CardContent, CardActionArea, Tooltip
+  InputAdornment, Card, CardContent, CardActionArea, Tooltip, Switch, FormControlLabel
 } from '@mui/material';
 import DeleteIcon       from '@mui/icons-material/Delete';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
@@ -14,7 +14,7 @@ import PostAddIcon      from '@mui/icons-material/PostAdd';
 import PersonAddIcon    from '@mui/icons-material/PersonAdd';
 import SearchIcon       from '@mui/icons-material/Search';
 import PrintIcon        from '@mui/icons-material/Print';
-import { clienteService, mesaService, productoService, comandaService } from '../services/api';
+import { clienteService, mesaService, productoService, comandaService, categoriasProductosService } from '../services/api';
 
 const TIPOS_DOCUMENTO = [
   { value: 'cedula_identidad', label: 'Cédula de Identidad' },
@@ -23,14 +23,26 @@ const TIPOS_DOCUMENTO = [
   { value: 'documento_extranjero', label: 'Documento Extranjero' },
 ];
 
+const CATEGORIAS_ESTATICAS = [
+  { value: 'platos_principales', label: 'Platos Principales' },
+  { value: 'bebidas', label: 'Bebidas' },
+  { value: 'postres', label: 'Postres' },
+  { value: 'sopas', label: 'Sopas' },
+  { value: 'entradas', label: 'Entradas' },
+  { value: 'comidas_rapidas', label: 'Comidas Rápidas' },
+  { value: 'adicionales', label: 'Adicionales' },
+];
+
 const TomarPedidoPage = () => {
   const [clientes,  setClientes]  = useState([]);
   const [mesas,     setMesas]     = useState([]);
   const [productos, setProductos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [selectedMesa,    setSelectedMesa]    = useState(null);
   const [carrito,         setCarrito]         = useState([]);
+  const [a_domicilio,     setA_domicilio]     = useState(false);
   
   const [busquedaProd, setBusquedaProd] = useState('');
   const [categoria, setCategoria] = useState('todas');
@@ -38,9 +50,24 @@ const TomarPedidoPage = () => {
   
   // Modal Crear Cliente Rápido
   const [openModalCliente, setOpenModalCliente] = useState(false);
-  const [formCliente, setFormCliente]           = useState({ nombre: '', apellido: '', numero_documento: '', tipo_documento: '', telefono: '' });
+  const [formCliente, setFormCliente]           = useState({ nombre: '', apellido: '', numero_documento: '', tipo_documento: '', telefono: '', direccion: '' });
 
   const showSnack = (msg, severity = 'success') => setSnack({ open: true, msg, severity });
+
+  const fetchCategorias = async () => {
+    try {
+      const res = await categoriasProductosService.getAll();
+      const categoriasNuevas = res.data.filter(c => c.activa).map(c => ({ 
+        value: c.detalles.value, 
+        label: c.detalles.label 
+      }));
+      const nuevasNoRepetidas = categoriasNuevas.filter(cat => !CATEGORIAS_ESTATICAS.some(est => est.label === cat.label));
+      const todasLasCategorias = [...CATEGORIAS_ESTATICAS, ...nuevasNoRepetidas];
+      setCategorias(todasLasCategorias);
+    } catch {
+      setCategorias(CATEGORIAS_ESTATICAS);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -59,6 +86,7 @@ const TomarPedidoPage = () => {
       }
     };
     fetchData();
+    fetchCategorias();
   }, []);
 
   // Agregar al carrito
@@ -73,13 +101,19 @@ const TomarPedidoPage = () => {
 
   // Crear Cliente Rápido
   const guardarCliente = async () => {
+    if (a_domicilio && !formCliente.telefono) {
+      return showSnack('El teléfono es obligatorio para pedidos a domicilio.', 'warning');
+    }
+    if (a_domicilio && !formCliente.direccion) {
+      return showSnack('La dirección es obligatoria para pedidos a domicilio.', 'warning');
+    }
     try {
       const res = await clienteService.create(formCliente);
       setClientes(prev => [res.data, ...prev]);
       setSelectedCliente(res.data);
       setOpenModalCliente(false);
       showSnack('Cliente creado y seleccionado.');
-      setFormCliente({ nombre: '', apellido: '', numero_documento: '', tipo_documento: '', telefono: '' });
+      setFormCliente({ nombre: '', apellido: '', numero_documento: '', tipo_documento: '', telefono: '', direccion: '' });
     } catch {
       showSnack('Error al crear el cliente.', 'error');
     }
@@ -90,8 +124,14 @@ const TomarPedidoPage = () => {
   const [comandaParaImprimir, setComandaParaImprimir] = useState(null);
 
   const enviarPedido = async () => {
-    if (!selectedMesa) {
-      return showSnack('Debes seleccionar una mesa.', 'warning');
+    if (!a_domicilio && !selectedMesa) {
+      return showSnack('Debes seleccionar una mesa o marcar como pedido a domicilio.', 'warning');
+    }
+    if (a_domicilio && !selectedCliente) {
+      return showSnack('El cliente es obligatorio para pedidos a domicilio.', 'warning');
+    }
+    if (a_domicilio && !selectedCliente?.direccion) {
+      return showSnack('La dirección es obligatoria para pedidos a domicilio.', 'warning');
     }
     if (carrito.length === 0) {
       return showSnack('El carrito está vacío.', 'warning');
@@ -99,25 +139,30 @@ const TomarPedidoPage = () => {
 
     try {
       const datos = {
-        id_mesa: selectedMesa._id,
+        id_mesa: selectedMesa ? selectedMesa._id : undefined,
         id_cliente: selectedCliente ? selectedCliente._id : undefined,
-        ids_productos: carrito.map(p => p._id) // Múltiples referencias al ID del producto
+        ids_productos: carrito.map(p => p._id),
+        a_domicilio: a_domicilio,
+        direccion_entrega: selectedCliente?.direccion || ''
       };
       await comandaService.create(datos);
       
       // Guardamos info para la impresión antes de limpiar
       setComandaParaImprimir({
-        mesa: selectedMesa.numero_mesa,
+        mesa: selectedMesa ? selectedMesa.numero_mesa : 'Domicilio',
         cliente: selectedCliente ? `${selectedCliente.nombre} ${selectedCliente.apellido}` : 'Consumidor Final',
         productos: [...carrito],
-        fecha: new Date().toLocaleString()
+        fecha: new Date().toLocaleString(),
+        a_domicilio: a_domicilio
       });
 
       // Abrir modal de éxito
       setOpenModalExito(true);
       
       // Limpiar mesas si es necesario (sacar la que recién usamos)
-      setMesas(prev => prev.filter(m => m._id !== selectedMesa._id));
+      if (selectedMesa) {
+        setMesas(prev => prev.filter(m => m._id !== selectedMesa._id));
+      }
     } catch (err) {
       showSnack(err.response?.data?.message || 'Error al guardar la comanda.', 'error');
     }
@@ -160,17 +205,54 @@ const TomarPedidoPage = () => {
         {/* Columna Izquierda: Selección */}
         <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           
-          {/* Selección de Mesa */}
+          {/* Selección de Mesa / Pedido a Domicilio */}
           <Paper elevation={0} sx={{ p: 3, mb: 2, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Mesa de Destino</Typography>
-            <Autocomplete
-              options={mesas}
-              getOptionLabel={(option) => option ? `Mesa #${option.numero_mesa}` : ''}
-              value={selectedMesa}
-              onChange={(_, val) => setSelectedMesa(val)}
-              renderInput={(params) => <TextField {...params} label="Seleccionar Mesa (Solo Libres) *" size="small" />}
-              noOptionsText="Sin mesas libres"
-            />
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Mesa de Destino / Pedido a Domicilio</Typography>
+            <Grid container spacing={2}>
+              {/* Columna Izquierda: Selector de Mesa (visible solo si no es a domicilio) */}
+              <Grid item xs={12} sm={6}>
+                {!a_domicilio && (
+                  <Autocomplete
+                    options={mesas}
+                    getOptionLabel={(option) => option ? `Mesa #${option.numero_mesa}` : ''}
+                    value={selectedMesa}
+                    style={{minWidth: "300px"}}
+                    onChange={(_, val) => setSelectedMesa(val)}
+                    renderInput={(params) => <TextField {...params} label="Seleccionar Mesa (Solo Libres) *" size="small" />}
+                    noOptionsText="Sin mesas libres"
+                  />
+                )}
+                {a_domicilio && (
+                  <TextField
+                    label="Seleccionar Mesa (Solo Libres)"
+                    size="small"
+                    disabled
+                    placeholder="Deshabilitado para pedidos a domicilio"
+                    fullWidth
+                  />
+                )}
+              </Grid>
+
+              {/* Columna Derecha: Switch Pedido a Domicilio */}
+              <Grid item xs={12} sm={6} sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={a_domicilio}
+                      onChange={(e) => {
+                        setA_domicilio(e.target.checked);
+                        if (e.target.checked) {
+                          setSelectedMesa(null);
+                        }
+                      }}
+                      color="primary"
+                    />
+                  }
+                  label="Pedido a Domicilio"
+                  sx={{ m: 0 }}
+                />
+              </Grid>
+            </Grid>
           </Paper>
 
           {/* Información del Cliente */}
@@ -214,13 +296,13 @@ const TomarPedidoPage = () => {
 
             {/* Filtro por Categorías */}
             <Box sx={{ display: 'flex', gap: 1, mb: 3, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { height: 4 } }}>
-              {['todas', 'bebidas', 'postres', 'platos_principales', 'sopas', 'entradas', 'comidas_rapidas', 'adicionales'].map(cat => (
+              {[{ value: 'todas', label: 'Todas' }, ...categorias].map(cat => (
                 <Chip 
-                  key={cat} 
-                  label={cat === 'todas' ? 'Todas' : cat.replace('_', ' ')} 
-                  onClick={() => setCategoria(cat)}
-                  color={categoria === cat ? 'primary' : 'default'}
-                  variant={categoria === cat ? 'filled' : 'outlined'}
+                  key={cat.value} 
+                  label={cat.label}
+                  onClick={() => setCategoria(cat.value)}
+                  color={categoria === cat.value ? 'primary' : 'default'}
+                  variant={categoria === cat.value ? 'filled' : 'outlined'}
                   sx={{ textTransform: 'capitalize', fontWeight: 600 }}
                 />
               ))}
@@ -298,7 +380,7 @@ const TomarPedidoPage = () => {
                 variant="contained" 
                 size="large" 
                 onClick={enviarPedido}
-                disabled={!selectedMesa || carrito.length === 0}
+                disabled={(a_domicilio ? (!selectedCliente || carrito.length === 0) : (!selectedMesa || carrito.length === 0))}
                 sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, fontWeight: 700 }}
               >
                 Confirmar y Enviar
@@ -334,7 +416,26 @@ const TomarPedidoPage = () => {
             </TextField>
             <TextField fullWidth label="Número" value={formCliente.numero_documento} onChange={e => setFormCliente(p => ({ ...p, numero_documento: e.target.value }))} margin="normal" size="small"/>
           </Box>
-          <TextField fullWidth label="Teléfono" value={formCliente.telefono} onChange={e => setFormCliente(p => ({ ...p, telefono: e.target.value }))} margin="normal" size="small"/>
+          <TextField 
+            fullWidth 
+            label={`Teléfono${a_domicilio ? ' *' : ''}`}
+            value={formCliente.telefono} 
+            onChange={e => setFormCliente(p => ({ ...p, telefono: e.target.value }))} 
+            margin="normal" 
+            size="small"
+            required={a_domicilio}
+            placeholder="Ej: +57 3001234567"
+          />
+          <TextField 
+            fullWidth 
+            label={`Dirección${a_domicilio ? ' *' : ''}`}
+            value={formCliente.direccion} 
+            onChange={e => setFormCliente(p => ({ ...p, direccion: e.target.value }))} 
+            margin="normal" 
+            size="small"
+            placeholder="Calle, número, apartamento..."
+            required={a_domicilio}
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => setOpenModalCliente(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
@@ -405,7 +506,9 @@ const TomarPedidoPage = () => {
           <Box textAlign="center" mb={1}>
             <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '20px' }}>COMANDA DE COCINA</Typography>
             <Typography fontSize="14px">--------------------------------</Typography>
-            <Typography fontSize="16px" fontWeight="bold">MESA #{comandaParaImprimir.mesa}</Typography>
+            <Typography fontSize="16px" fontWeight="bold">
+              {comandaParaImprimir.a_domicilio ? 'PEDIDO A DOMICILIO' : `MESA #${comandaParaImprimir.mesa}`}
+            </Typography>
             <Typography fontSize="14px">--------------------------------</Typography>
           </Box>
 

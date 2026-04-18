@@ -53,6 +53,14 @@ export const productoService = {
   remove:  (id, masterKey) => api.delete(`/productos/${id}`, { headers: { 'x-master-key': masterKey } }),
 };
 
+export const categoriasProductosService = {
+  getAll:  ()          => api.get('/categorias-productos'),
+  getById: (id)        => api.get(`/categorias-productos/${id}`),
+  create:  (datos)     => api.post('/categorias-productos', datos),
+  update:  (id, datos) => api.put(`/categorias-productos/${id}`, datos),
+  remove:  (id, masterKey) => api.delete(`/categorias-productos/${id}`, { headers: { 'x-master-key': masterKey } }),
+};
+
 export const mesaService = {
   getAll:  ()          => api.get('/mesas'),
   getById: (id)        => api.get(`/mesas/${id}`),

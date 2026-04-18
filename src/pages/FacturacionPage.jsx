@@ -22,8 +22,18 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import TableBarIcon from '@mui/icons-material/TableBar';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import { productoService, clienteService, facturacionService, mesaService, comandaService, costoService } from '../services/api';
+import { productoService, clienteService, facturacionService, mesaService, comandaService, costoService, categoriasProductosService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+
+const CATEGORIAS_ESTATICAS = [
+  { value: 'platos_principales', label: 'Platos Principales' },
+  { value: 'bebidas', label: 'Bebidas' },
+  { value: 'postres', label: 'Postres' },
+  { value: 'sopas', label: 'Sopas' },
+  { value: 'entradas', label: 'Entradas' },
+  { value: 'comidas_rapidas', label: 'Comidas Rápidas' },
+  { value: 'adicionales', label: 'Adicionales' },
+];
 
 const METODOS_PAGO = [
   { value: 'efectivo', label: 'Efectivo' },
@@ -51,6 +61,7 @@ const FacturacionPage = () => {
   const [clientes, setClientes] = useState([]);
   const [mesas, setMesas] = useState([]);
   const [costos, setCostos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingMesa, setLoadingMesa] = useState(false);
 
@@ -60,6 +71,8 @@ const FacturacionPage = () => {
   const [metodoPago, setMetodoPago] = useState('');
   const [idComandaVinculada, setIdComandaVinculada] = useState(null);
   const [mesaSeleccionada, setMesaSeleccionada] = useState(null);
+  const [a_domicilio, setA_domicilio] = useState(false);
+  const [direccion_entrega, setDireccion_entrega] = useState('');
   const [busquedaProd, setBusquedaProd] = useState('');
   const [categoria, setCategoria] = useState('todas');
 
@@ -82,6 +95,7 @@ const FacturacionPage = () => {
   const [filtroMetodoPago, setFiltroMetodoPago] = useState('todos');
   const [filtroPropinas, setFiltroPropinas] = useState('todas');
   const [filtroMetodoPropina, setFiltroMetodoPropina] = useState('todos');
+  const [filtroDestino, setFiltroDestino] = useState('todos'); // todos, mesa, domicilio
   
   // Estados para pestaña de Utilidad
   const [fechaUtilDesde, setFechaUtilDesde] = useState('');
@@ -97,6 +111,21 @@ const FacturacionPage = () => {
   const [formPropina, setFormPropina] = useState({ metodo_pago: '', monto: '' });
 
   const showSnack = (msg, severity = 'success') => setSnack({ open: true, msg, severity });
+
+  const fetchCategorias = useCallback(async () => {
+    try {
+      const res = await categoriasProductosService.getAll();
+      const categoriasNuevas = res.data.filter(c => c.activa).map(c => ({ 
+        value: c.detalles.value, 
+        label: c.detalles.label 
+      }));
+      const nuevasNoRepetidas = categoriasNuevas.filter(cat => !CATEGORIAS_ESTATICAS.some(est => est.label === cat.label));
+      const todasLasCategorias = [...CATEGORIAS_ESTATICAS, ...nuevasNoRepetidas];
+      setCategorias(todasLasCategorias);
+    } catch {
+      setCategorias(CATEGORIAS_ESTATICAS);
+    }
+  }, []);
 
   const fetchDatos = useCallback(async () => {
     setLoading(true);
@@ -114,10 +143,14 @@ const FacturacionPage = () => {
       setFacturas(resF.data);
       setCostos(resCos.data);
 
+      // Cargar categorías
+      fetchCategorias();
+
       // Si venimos de la pantalla de comandas (navegación directa)
       if (navState?.comandaId) {
         setPedidoActual(navState.productos || []);
         setIdComandaVinculada(navState.comandaId);
+        setA_domicilio(navState.a_domicilio || false);
         const mesaVinculada = navState.mesaId
           ? resM.data.find(m => m._id === navState.mesaId)
           : resM.data.find(m => m.pedido_actual?._id === navState.comandaId);
@@ -354,6 +387,8 @@ const FacturacionPage = () => {
           };
         }),
         id_comanda: idComandaVinculada,
+        a_domicilio: a_domicilio,
+        direccion_entrega: direccion_entrega,
         propinas
       };
 
@@ -374,6 +409,8 @@ const FacturacionPage = () => {
       setCliente(null);
       setIdComandaVinculada(null);
       setMesaSeleccionada(null);
+      setA_domicilio(false);
+      setDireccion_entrega('');
       setMetodoPago('');
       setPropinas([]);
       setFormPropina({ metodo_pago: '', monto: '' });
@@ -495,6 +532,8 @@ const FacturacionPage = () => {
           };
         }),
         id_comanda: idComandaVinculada,
+        a_domicilio: a_domicilio,
+        direccion_entrega: direccion_entrega,
         pagos_parciales: pagosPartiales, // Agregar info de pagos divididos
         propinas
       };
@@ -514,6 +553,8 @@ const FacturacionPage = () => {
       setCliente(null);
       setIdComandaVinculada(null);
       setMesaSeleccionada(null);
+      setA_domicilio(false);
+      setDireccion_entrega('');
       setMetodoPago('');
       setModoContaDividida(false);
       setPagosPartiales([]);
@@ -610,13 +651,13 @@ const FacturacionPage = () => {
 
               {/* Filtro por Categorías */}
               <Box sx={{ display: 'flex', gap: 1, mb: 3, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { height: 4 } }}>
-                {['todas', 'bebidas', 'postres', 'platos_principales', 'sopas', 'entradas', 'comidas_rapidas', 'adicionales'].map(cat => (
+                {[{ value: 'todas', label: 'Todas' }, ...categorias].map(cat => (
                   <Chip 
-                    key={cat} 
-                    label={cat === 'todas' ? 'Todas' : cat.replace('_', ' ')} 
-                    onClick={() => setCategoria(cat)}
-                    color={categoria === cat ? 'primary' : 'default'}
-                    variant={categoria === cat ? 'filled' : 'outlined'}
+                    key={cat.value} 
+                    label={cat.label}
+                    onClick={() => setCategoria(cat.value)}
+                    color={categoria === cat.value ? 'primary' : 'default'}
+                    variant={categoria === cat.value ? 'filled' : 'outlined'}
                     sx={{ textTransform: 'capitalize', fontWeight: 600 }}
                   />
                 ))}
@@ -772,13 +813,41 @@ const FacturacionPage = () => {
       {/* TAB 1: VENTAS DE HOY */}
       {tab === 1 && (
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6} md={4}>
+              <FormControl fullWidth size="small" style={{minWidth: "150px"}}>
+                <InputLabel>Filtrar por Destino</InputLabel>
+                <Select value={filtroDestino} label="Filtrar por Destino" onChange={e => setFiltroDestino(e.target.value)}>
+                  <MenuItem value="todos">Todos</MenuItem>
+                  <MenuItem value="mesa">Mesas</MenuItem>
+                  <MenuItem value="domicilio">A Domicilio</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Button 
+                variant="outlined" 
+                color="error" 
+                onClick={() => setFiltroDestino('todos')}
+                fullWidth
+              >
+                Limpiar Filtro
+              </Button>
+            </Grid>
+          </Grid>
           <TablaReporteFacturas
             facturas={facturas.filter(f => {
               const d = new Date();
               const hoy = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
               const fechaFac = new Date(f.createdAt);
               const facLocal = `${fechaFac.getFullYear()}-${String(fechaFac.getMonth() + 1).padStart(2, '0')}-${String(fechaFac.getDate()).padStart(2, '0')}`;
-              return facLocal === hoy;
+              
+              if (facLocal !== hoy) return false;
+              
+              if (filtroDestino === 'mesa' && f.a_domicilio) return false;
+              if (filtroDestino === 'domicilio' && !f.a_domicilio) return false;
+              
+              return true;
             })}
             enReproduccion={reImprimir}
             onDelete={handleDelete}
@@ -836,8 +905,18 @@ const FacturacionPage = () => {
                 </Select>
               </FormControl>
             </Grid>
+            <Grid item xs={12} sm={4} md={2.5}>
+              <FormControl fullWidth size="small" style={{minWidth: "150px"}}>
+                <InputLabel>Filtrar por Destino</InputLabel>
+                <Select value={filtroDestino} label="Filtrar por Destino" onChange={e => setFiltroDestino(e.target.value)}>
+                  <MenuItem value="todos">Todos</MenuItem>
+                  <MenuItem value="mesa">Mesas</MenuItem>
+                  <MenuItem value="domicilio">A Domicilio</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
             <Grid item xs={12} md={12}>
-              <Button variant="outlined" color="error" onClick={() => { setFiltroGeneral(''); setFechaDesde(''); setFechaHasta(''); setFiltroMetodoPago('todos'); setFiltroPropinas('todas'); setFiltroMetodoPropina('todos'); }}>
+              <Button variant="outlined" color="error" onClick={() => { setFiltroGeneral(''); setFechaDesde(''); setFechaHasta(''); setFiltroMetodoPago('todos'); setFiltroPropinas('todas'); setFiltroMetodoPropina('todos'); setFiltroDestino('todos'); }}>
                 Limpiar Filtros
               </Button>
             </Grid>
@@ -873,6 +952,12 @@ const FacturacionPage = () => {
               }
               if (match && filtroMetodoPropina !== 'todos') {
                 match = propinasFactura.some(propina => propina.metodo_pago === filtroMetodoPropina);
+              }
+              if (match && filtroDestino === 'mesa') {
+                match = !f.a_domicilio;
+              }
+              if (match && filtroDestino === 'domicilio') {
+                match = f.a_domicilio;
               }
               return match;
             })}
@@ -1046,6 +1131,19 @@ const FacturacionPage = () => {
             <Box mb={1}>
               <Typography fontSize="12px">Cliente: {facturaFinal.id_cliente.nombre} {facturaFinal.id_cliente.apellido}</Typography>
               <Typography fontSize="12px">Doc: {facturaFinal.id_cliente.numero_documento || 'N/A'}</Typography>
+              {facturaFinal.id_cliente.telefono && (
+                <Typography fontSize="12px">Telf: {facturaFinal.id_cliente.telefono}</Typography>
+              )}
+            </Box>
+          )}
+
+          {facturaFinal.a_domicilio && (
+            <Box mb={1} sx={{ p: 1, border: '1px dashed #000', borderRadius: '2px' }}>
+              <Typography fontSize="12px" fontWeight="bold" textAlign="center" sx={{ mb: 0.5 }}>** VENTA A DOMICILIO **</Typography>
+              <Typography fontSize="11px"><strong>Dirección:</strong> {facturaFinal.direccion_entrega || 'N/A'}</Typography>
+              {facturaFinal.id_cliente?.telefono && (
+                <Typography fontSize="11px"><strong>Teléfono:</strong> {facturaFinal.id_cliente.telefono}</Typography>
+              )}
             </Box>
           )}
 
@@ -1262,6 +1360,7 @@ const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
               <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>No. Factura</TableCell>
               <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Fecha</TableCell>
               <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Cliente / Cédula</TableCell>
+              <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Mesa / Destino</TableCell>
               <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Total / Métodos</TableCell>
               <TableCell sx={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>Acciones</TableCell>
             </TableRow>
@@ -1269,7 +1368,7 @@ const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
           <TableBody>
             {facturas.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                   <ReceiptLongIcon sx={{ fontSize: 40, opacity: 0.3, display: 'block', mx: 'auto', mb: 1 }} />
                   No existen registros bajo este filtro.
                 </TableCell>
@@ -1289,6 +1388,15 @@ const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
                       </Box>
                     ) : (
                       <Typography variant="body2" color="text.secondary">Consumidor Final</Typography>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {f.a_domicilio ? (
+                      <Chip label="PEDIDO A DOMICILIO" color="warning" variant="outlined" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }} />
+                    ) : f.id_comanda?.id_mesa ? (
+                      <Chip label={`MESA #${f.id_comanda.id_mesa.numero_mesa}`} color="info" variant="outlined" sx={{ fontWeight: 'bold' }} />
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">—</Typography>
                     )}
                   </TableCell>
                   <TableCell>

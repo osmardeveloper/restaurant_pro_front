@@ -7,9 +7,10 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute   from './components/ProtectedRoute';
 import Layout           from './components/Layout';
 import LoginPage        from './pages/LoginPage';
+import PublicMenuPage   from './pages/PublicMenuPage';
 import UsuariosPage     from './pages/UsuariosPage';
-import PlatosPage       from './pages/PlatosPage';
 import MesasPage        from './pages/MesasPage';
+import DomiciliosPage   from './pages/DomiciliosPage';
 import ProductosPage    from './pages/ProductosPage';
 import ComandasPage     from './pages/ComandasPage';
 import ClientesPage     from './pages/ClientesPage';
@@ -25,8 +26,9 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Ruta pública */}
+          {/* Rutas públicas */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/menu" element={<PublicMenuPage />} />
 
           {/* Rutas protegidas dentro del Layout */}
           <Route
@@ -42,8 +44,8 @@ function App() {
             <Route path="usuarios"     element={<ProtectedRoute modulo="usuarios"><UsuariosPage /></ProtectedRoute>} />
             <Route path="clientes"     element={<ProtectedRoute modulo="clientes"><ClientesPage /></ProtectedRoute>} />
             <Route path="productos"    element={<ProtectedRoute modulo="productos"><ProductosPage /></ProtectedRoute>} />
-            <Route path="platos"       element={<ProtectedRoute modulo="platos"><PlatosPage /></ProtectedRoute>} />
             <Route path="mesas"        element={<ProtectedRoute modulo="mesas"><MesasPage /></ProtectedRoute>} />
+            <Route path="domicilios"   element={<ProtectedRoute modulo="domicilios"><DomiciliosPage /></ProtectedRoute>} />
             <Route path="tomar-pedido" element={<ProtectedRoute modulo="tomar_pedido"><TomarPedidoPage /></ProtectedRoute>} />
             <Route path="comandas"     element={<ProtectedRoute modulo="comandas"><ComandasPage /></ProtectedRoute>} />
             <Route path="facturacion"  element={<ProtectedRoute modulo="facturacion"><FacturacionPage /></ProtectedRoute>} />

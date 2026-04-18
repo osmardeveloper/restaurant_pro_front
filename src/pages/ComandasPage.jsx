@@ -17,16 +17,22 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import SearchIcon from '@mui/icons-material/Search';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
+import PrintIcon from '@mui/icons-material/Print';
 import { comandaService, productoService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const ComandasPage = () => {
   const navigate = useNavigate();
+  const { usuario } = useAuth();
   const [comandas, setComanadas]         = useState([]);
   const [platos, setPlatos]              = useState([]);
   const [loading, setLoading]            = useState(false);
   const [page, setPage]                  = useState(0);
   const [rowsPerPage, setRowsPerPage]    = useState(10);
   const [snack, setSnack]                = useState({ open: false, msg: '', severity: 'error' });
+
+  // Estado para impresión de comanda
+  const [comandaParaImprimir, setComandaParaImprimir] = useState(null);
 
   // Modal State
   const [dialogOpen, setDialogOpen]      = useState(false);
@@ -90,6 +96,28 @@ const ComandasPage = () => {
     }
   };
 
+  const imprimirComanda = (comanda) => {
+    const mesaInfo = comanda.a_domicilio ? 'Domicilio' : (comanda.id_mesa?.numero_mesa || 'N/A');
+    const clienteInfo = comanda.id_cliente 
+      ? `${comanda.id_cliente.nombre} ${comanda.id_cliente.apellido}` 
+      : 'Consumidor Final';
+    
+    setComandaParaImprimir({
+      mesa: mesaInfo,
+      cliente: clienteInfo,
+      productos: comanda.ids_productos || [],
+      fecha: new Date(comanda.createdAt).toLocaleString('es-MX'),
+      a_domicilio: comanda.a_domicilio || false
+    });
+
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        setComandaParaImprimir(null);
+      }, 1000);
+    }, 300);
+  };
+
   const paginadas = comandas.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   const totalEdicion = pedidoActual.reduce((acc, curr) => acc + (curr.precio || 0), 0);
   const prodFiltrados = platos.filter(p => (p.nombre || '').toLowerCase().includes(busquedaProd.toLowerCase()));
@@ -122,6 +150,7 @@ const ComandasPage = () => {
                     <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Productos</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Fecha / Hora</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 700, textAlign: 'center' }}>Facturada</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 700, textAlign: 'center' }}>Imprimir Comanda</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 700, textAlign: 'center' }}>Editar</TableCell>
                   </TableRow>
                 </TableHead>
@@ -137,7 +166,13 @@ const ComandasPage = () => {
                     paginadas.map((comanda) => {
                       return (
                         <TableRow key={comanda._id} sx={{ '&:hover': { background: 'rgba(233,69,96,0.04)' }, '&:last-child td': { border: 0 } }}>
-                          <TableCell><Typography fontWeight={700} color="#0f3460">Mesa #{comanda.id_mesa?.numero_mesa ?? '—'}</Typography></TableCell>
+                          <TableCell>
+                            {comanda.a_domicilio ? (
+                              <Chip label="DOMICILIO" color="error" variant="filled" size="small" sx={{ fontSize: '0.75rem', fontWeight: 700 }} />
+                            ) : (
+                              <Typography fontWeight={700} color="#0f3460">Mesa #{comanda.id_mesa?.numero_mesa ?? '—'}</Typography>
+                            )}
+                          </TableCell>
                           <TableCell>
                             {comanda.id_cliente ? (
                               <Typography variant="body2" sx={{ fontWeight: 600 }}>{comanda.id_cliente.nombre} {comanda.id_cliente.apellido}</Typography>
@@ -169,12 +204,23 @@ const ComandasPage = () => {
                             )}
                           </TableCell>
                           <TableCell align="center">
+                            <Tooltip title="Imprimir Comanda">
+                              <IconButton size="small" onClick={() => imprimirComanda(comanda)} sx={{ color: '#0f3460' }}>
+                                <PrintIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell align="center">
                             {!comanda.facturada ? (
-                              <Tooltip title="Editar Comanda">
-                                <IconButton size="small" onClick={() => abrirEditar(comanda)} sx={{ color: '#0f3460' }}>
-                                  <EditIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
+                              usuario?.rol !== 'cocina' ? (
+                                <Tooltip title="Editar Comanda">
+                                  <IconButton size="small" onClick={() => abrirEditar(comanda)} sx={{ color: '#0f3460' }}>
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : (
+                                <Typography variant="caption" color="text.secondary">Solo lectura</Typography>
+                              )
                             ) : (
                               <Typography variant="caption" color="text.secondary">Bloqueado</Typography>
                             )}
@@ -270,6 +316,65 @@ const ComandasPage = () => {
           <Button onClick={guardarEdicion} variant="contained" sx={{ borderRadius: 2, background: 'linear-gradient(135deg, #e94560, #c62a47)' }}>Actualizar Comanda</Button>
         </DialogActions>
       </Dialog>
+
+      {/* COMPONENTE DE IMPRESIÓN (OCULTO) */}
+      {comandaParaImprimir && (
+        <Box className="print-only">
+          <style>
+            {`
+              .print-only { display: none; }
+              @media print {
+                html, body, #root { height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; }
+                body * { visibility: hidden !important; }
+                .print-only, .print-only * { visibility: visible !important; }
+                .print-only { 
+                   display: block !important; 
+                   position: absolute !important; 
+                   left: 0 !important; top: 0 !important; 
+                   width: 78mm !important; 
+                   padding: 5mm !important;
+                   font-family: 'Courier New', Courier, monospace !important; 
+                   font-size: 14px !important; 
+                   color: #000 !important; 
+                   box-sizing: border-box !important; 
+                }
+                @page { size: auto; margin: 0; }
+              }
+            `}
+          </style>
+          <Box textAlign="center" mb={1}>
+            <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '20px' }}>COMANDA DE COCINA</Typography>
+            <Typography fontSize="14px">--------------------------------</Typography>
+            <Typography fontSize="16px" fontWeight="bold">
+              {comandaParaImprimir.a_domicilio ? 'PEDIDO A DOMICILIO' : `MESA #${comandaParaImprimir.mesa}`}
+            </Typography>
+            <Typography fontSize="14px">--------------------------------</Typography>
+          </Box>
+
+          <Box mb={2}>
+            <Typography fontSize="13px"><strong>Cliente:</strong> {comandaParaImprimir.cliente}</Typography>
+            <Typography fontSize="13px"><strong>Fecha:</strong> {comandaParaImprimir.fecha}</Typography>
+          </Box>
+
+          <Box sx={{ borderBottom: '1px solid #000', mb: 1, pb: 0.5 }}>
+            <Typography fontSize="14px" fontWeight="bold">PRODUCTOS</Typography>
+          </Box>
+
+          <Box mb={2}>
+            {comandaParaImprimir.productos.map((item, i) => (
+              <Box key={i} sx={{ display: 'flex', mb: 0.5 }}>
+                <Typography fontSize="14px" sx={{ fontWeight: 'bold', mr: 1 }}>1x</Typography>
+                <Typography fontSize="14px" sx={{ textTransform: 'uppercase' }}>{item.nombre}</Typography>
+              </Box>
+            ))}
+          </Box>
+
+          <Box mt={3} textAlign="center">
+            <Typography fontSize="14px">--------------------------------</Typography>
+            <Typography fontSize="12px" sx={{ fontStyle: 'italic' }}>Sistema de Gestión de Restaurante</Typography>
+          </Box>
+        </Box>
+      )}
 
       <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <Alert severity={snack.severity} variant="filled" sx={{ borderRadius: 2 }}>{snack.msg}</Alert>

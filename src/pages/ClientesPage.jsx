@@ -29,7 +29,8 @@ const FORM_INICIAL = {
   telefono: '',
   tipo_documento: '',
   numero_documento: '',
-  correo: ''
+  correo: '',
+  direccion: ''
 };
 
 const ClientesPage = () => {
@@ -69,7 +70,8 @@ const ClientesPage = () => {
       telefono: row.telefono || '',
       tipo_documento: row.tipo_documento || '',
       numero_documento: row.numero_documento || '',
-      correo: row.correo || ''
+      correo: row.correo || '',
+      direccion: row.direccion || ''
     }); 
     setDialogOpen(true); 
   };
@@ -112,6 +114,7 @@ const ClientesPage = () => {
     { field: 'telefono', headerName: 'Teléfono', flex: 1, minWidth: 120 },
     { field: 'numero_documento', headerName: 'Nº Documento', flex: 1, minWidth: 130 },
     { field: 'correo', headerName: 'Correo', flex: 1.5, minWidth: 150 },
+    { field: 'direccion', headerName: 'Dirección', flex: 1.5, minWidth: 200 },
     {
       field: 'acciones', headerName: 'Acciones', width: 120, sortable: false,
       renderCell: ({ row }) => (
@@ -127,7 +130,7 @@ const ClientesPage = () => {
 
   const filtrados = clientes.filter(c => {
     const term = busqueda.toLowerCase();
-    return (c.nombre?.toLowerCase().includes(term) || c.apellido?.toLowerCase().includes(term) || c.numero_documento?.toLowerCase().includes(term));
+    return (c.nombre?.toLowerCase().includes(term) || c.apellido?.toLowerCase().includes(term) || c.numero_documento?.toLowerCase().includes(term) || c.direccion?.toLowerCase().includes(term));
   });
 
   return (
@@ -204,6 +207,7 @@ const ClientesPage = () => {
           </Box>
           <TextField fullWidth label="Teléfono" value={form.telefono} onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))} margin="normal" />
           <TextField fullWidth label="Correo Electrónico" type="email" value={form.correo} onChange={e => setForm(p => ({ ...p, correo: e.target.value }))} margin="normal" />
+          <TextField fullWidth label="Dirección" value={form.direccion} onChange={e => setForm(p => ({ ...p, direccion: e.target.value }))} margin="normal" placeholder="Calle, número, apartamento..." />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
           <Button onClick={() => setDialogOpen(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>

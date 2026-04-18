@@ -1,5 +1,5 @@
 // ============================================================
-// src/pages/MesasPage.jsx — CRUD de Mesas con Cards y estados
+// src/pages/DomiciliosPage.jsx — Vista de Pedidos a Domicilio
 // ============================================================
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -9,14 +9,14 @@ import {
   Grid, Card, CardContent, CardActions, Chip, Tooltip, Divider,
   Select, MenuItem, FormControl, InputLabel, Autocomplete
 } from '@mui/material';
-import AddIcon      from '@mui/icons-material/Add';
-import EditIcon     from '@mui/icons-material/Edit';
-import DeleteIcon   from '@mui/icons-material/Delete';
-import TableBarIcon from '@mui/icons-material/TableBar';
-import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import PrintIcon from '@mui/icons-material/Print';
-import { mesaService, productoService, comandaService, clienteService } from '../services/api';
+import AddIcon          from '@mui/icons-material/Add';
+import EditIcon         from '@mui/icons-material/Edit';
+import DeleteIcon       from '@mui/icons-material/Delete';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import PointOfSaleIcon   from '@mui/icons-material/PointOfSale';
+import PersonAddIcon     from '@mui/icons-material/PersonAdd';
+import PrintIcon        from '@mui/icons-material/Print';
+import { productoService, comandaService, clienteService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const estadoConfig = {
@@ -31,18 +31,17 @@ const TIPOS_DOCUMENTO = [
   { value: 'documento_extranjero', label: 'Documento Extranjero' },
 ];
 
-const FORM_INICIAL = { numero_mesa: '', estado: 'disponible', pedido_actual: [], comanda_id: null };
+const FORM_INICIAL = { estado: 'disponible', pedido_actual: [], comanda_id: null, direccion_entrega: '' };
 
-const MesasPage = () => {
+const DomiciliosPage = () => {
   const { usuario } = useAuth();
   const navigate = useNavigate();
-  const [mesas, setMesas]               = useState([]);
+  const [comandas, setComandas]         = useState([]);
   const [platos, setPlatos]             = useState([]);
   const [clientes, setClientes]         = useState([]);
   
   const [loading, setLoading]           = useState(false);
   const [dialogOpen, setDialogOpen]     = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState({ open: false, id: null, numero: '', masterKey: '' });
   const [editId, setEditId]             = useState(null);
   
   const [form, setForm]                 = useState(FORM_INICIAL);
@@ -54,7 +53,7 @@ const MesasPage = () => {
 
   // Modal Propina Sugerida para Imprimir Cuenta
   const [openPropina, setOpenPropina] = useState(false);
-  const [mesaPropina, setMesaPropina] = useState(null);
+  const [comandaPropina, setComandaPropina] = useState(null);
   const [tipoPropina, setTipoPropina] = useState('porcentaje'); // 'porcentaje' o 'monto'
   const [valorPropina, setValorPropina] = useState('');
   const [reciboDatos, setReciboDatos] = useState(null); // Estado para los datos del recibo
@@ -71,12 +70,14 @@ const MesasPage = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [mesasRes, productosRes, cliRes] = await Promise.all([
-        mesaService.getAll(), 
+      const [comandasRes, productosRes, cliRes] = await Promise.all([
+        comandaService.getAll(), 
         productoService.getAll(),
         clienteService.getAll()
       ]);
-      setMesas(mesasRes.data);
+      // Filtrar: solo comandas a domicilio y NO facturadas
+      const domicilios = comandasRes.data.filter(c => c.a_domicilio === true && c.facturada === false);
+      setComandas(domicilios);
       setPlatos(productosRes.data); 
       setClientes(cliRes.data);
     } catch {
@@ -90,56 +91,40 @@ const MesasPage = () => {
 
   const validar = () => {
     const errors = {};
-    if (editId) {
-      if (!form.numero_mesa) errors.numero_mesa = 'El número de mesa es requerido.';
-      else if (isNaN(Number(form.numero_mesa)) || Number(form.numero_mesa) < 1) errors.numero_mesa = 'Número válido requerido.';
-    }
+    if (!form.direccion_entrega) errors.direccion_entrega = 'La dirección de entrega es requerida.';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const abrirCrear = async () => {
-    try {
-      setLoading(true);
-      await mesaService.create({});
-      showSnack('Mesa creada automáticamente.');
-      fetchData();
-    } catch (err) {
-      showSnack(err.response?.data?.message || 'Error al crear la mesa.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const abrirEditar = (mesa) => {
-    setEditId(mesa._id);
-    const productos = mesa.pedido_actual?.ids_productos || [];
+  const abrirEditar = (comanda) => {
+    setEditId(comanda._id);
+    const productos = comanda.ids_productos || [];
     
     // Carga de cliente si existe
     let currentClient = null;
-    if (mesa.pedido_actual?.id_cliente) {
-       currentClient = clientes.find(c => c._id === mesa.pedido_actual.id_cliente._id || c._id === mesa.pedido_actual.id_cliente);
+    if (comanda.id_cliente) {
+       currentClient = clientes.find(c => c._id === comanda.id_cliente._id || c._id === comanda.id_cliente);
     }
 
     setSelectedCliente(currentClient || null);
     setForm({ 
-      numero_mesa: mesa.numero_mesa, 
-      estado: mesa.estado, 
+      estado: 'pedido tomado',
       pedido_actual: productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9) })),
-      comanda_id: mesa.pedido_actual?._id || null
+      comanda_id: comanda._id || null,
+      direccion_entrega: comanda.direccion_entrega || ''
     });
     setBusquedaProd('');
     setFormErrors({});
     setDialogOpen(true);
   };
 
-  const irAFacturar = (mesa) => {
+  const irAFacturar = (comanda) => {
     navigate('/facturacion', {
       state: {
-        productos: mesa.pedido_actual?.ids_productos || [],
-        cliente: mesa.pedido_actual?.id_cliente || null,
-        comandaId: mesa.pedido_actual?._id || null,
-        mesaId: mesa._id
+        productos: comanda.ids_productos || [],
+        cliente: comanda.id_cliente || null,
+        comandaId: comanda._id,
+        a_domicilio: true
       }
     });
   };
@@ -156,28 +141,14 @@ const MesasPage = () => {
     if (!validar()) return;
     try {
       if (editId) {
-        // 1. Actualizar datos básicos de la mesa (Núm/Estado)
-        const datosMesa = { numero_mesa: Number(form.numero_mesa), estado: form.estado };
-        await mesaService.update(editId, datosMesa);
+        // Actualizar comanda
+        await comandaService.update(editId, { 
+          ids_productos: form.pedido_actual.map(p => p._id),
+          id_cliente: selectedCliente ? selectedCliente._id : null,
+          direccion_entrega: form.direccion_entrega
+        });
         
-        // 2. Gestionar la Comanda (Pedido)
-        if (form.comanda_id) {
-          // Si ya existe comanda, actualizar productos y cliente
-          await comandaService.update(form.comanda_id, { 
-            ids_productos: form.pedido_actual.map(p => p._id),
-            id_cliente: selectedCliente ? selectedCliente._id : null
-          });
-        } else if (form.pedido_actual.length > 0) {
-          // Si NO existe comanda pero se agregaron productos, CREARLA
-          await comandaService.create({
-            id_mesa: editId,
-            ids_productos: form.pedido_actual.map(p => p._id),
-            id_cliente: selectedCliente ? selectedCliente._id : null,
-            estado: 'abierta'
-          });
-        }
-        
-        showSnack('Mesa y pedido actualizados correctamente.');
+        showSnack('Domicilio y pedido actualizados correctamente.');
       } 
       setDialogOpen(false);
       fetchData();
@@ -199,23 +170,8 @@ const MesasPage = () => {
     }
   };
 
-  const confirmarEliminar = async () => {
-    if (!deleteDialog.masterKey) {
-      showSnack('Ingresa la clave maestra.', 'warning');
-      return;
-    }
-    try {
-      await mesaService.remove(deleteDialog.id, deleteDialog.masterKey);
-      showSnack('Mesa eliminada correctamente.');
-      setDeleteDialog({ open: false, id: null, numero: '', masterKey: '' });
-      fetchData();
-    } catch (err) {
-      showSnack(err.response?.data?.message || 'Clave incorrecta o error al eliminar la mesa.', 'error');
-    }
-  };
-
-  const abrirModalPropina = (mesa) => {
-    setMesaPropina(mesa);
+  const abrirModalPropina = (comanda) => {
+    setComandaPropina(comanda);
     setTipoPropina('porcentaje');
     setValorPropina('');
     setOpenPropina(true);
@@ -227,15 +183,15 @@ const MesasPage = () => {
       return;
     }
 
-    const totalPedido = mesaPropina.pedido_actual.ids_productos.reduce((acc, p) => acc + (p.precio || 0), 0);
+    const totalPedido = comandaPropina.ids_productos.reduce((acc, p) => acc + (p.precio || 0), 0);
     const montoPropina = tipoPropina === 'porcentaje' 
       ? (totalPedido * Number(valorPropina)) / 100 
       : Number(valorPropina);
 
-    // Actualizar estado con los datos del recibo (React renderiza)
+    // Actualizar estado con los datos del recibo
     setReciboDatos({
-      numero_mesa: mesaPropina.numero_mesa,
-      productos: mesaPropina.pedido_actual.ids_productos,
+      direccion: comandaPropina.direccion_entrega,
+      productos: comandaPropina.ids_productos,
       totalPedido,
       montoPropina,
       tipoPropina,
@@ -256,20 +212,19 @@ const MesasPage = () => {
     }, 300);
   };
 
-  const imprimirComanda = (mesa) => {
-    if (!mesa.pedido_actual?.ids_productos) return;
+  const imprimirComanda = (comanda) => {
+    if (!comanda.ids_productos) return;
     
-    const mesaInfo = mesa.a_domicilio ? 'Domicilio' : mesa.numero_mesa;
-    const clienteInfo = mesa.pedido_actual.id_cliente 
-      ? `${mesa.pedido_actual.id_cliente.nombre} ${mesa.pedido_actual.id_cliente.apellido}` 
+    const clienteInfo = comanda.id_cliente 
+      ? `${comanda.id_cliente.nombre} ${comanda.id_cliente.apellido}` 
       : 'Consumidor Final';
 
     setComandaParaImprimir({
-      mesa: mesaInfo,
+      direccion: comanda.direccion_entrega,
       cliente: clienteInfo,
-      productos: mesa.pedido_actual.ids_productos || [],
+      productos: comanda.ids_productos || [],
       fecha: new Date().toLocaleString('es-MX'),
-      a_domicilio: mesa.a_domicilio || false
+      a_domicilio: true
     });
 
     setTimeout(() => {
@@ -289,57 +244,58 @@ const MesasPage = () => {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{ p: 1, borderRadius: 2, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }}>
-            <TableBarIcon sx={{ color: '#fff', display: 'block' }} />
+            <LocalShippingIcon sx={{ color: '#fff', display: 'block' }} />
           </Box>
           <Box>
-            <Typography variant="h5" fontWeight={700} color="#1a1a2e">Mesas</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {mesas.filter(m => m.estado === 'disponible').length} disponibles / {mesas.length} total
-            </Typography>
+            <Typography variant="h5" fontWeight={700} color="#1a1a2e">Domicilios</Typography>
+            <Typography variant="body2" color="text.secondary">{comandas.length} pedido(s) activo(s)</Typography>
           </Box>
         </Box>
-        {usuario?.rol === 'admin' && (
-          <Button id="crear-mesa-btn" variant="contained" startIcon={<AddIcon />} onClick={abrirCrear} sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, px: 3, boxShadow: '0 4px 14px rgba(233,69,96,0.35)' }}>
-            Nueva Mesa
-          </Button>
-        )}
       </Box>
 
       {loading ? (
-        <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>Cargando mesas...</Box>
-      ) : mesas.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>Cargando domicilios...</Box>
+      ) : comandas.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
-          <TableBarIcon sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
-          <Typography>No hay mesas registradas aún.</Typography>
+          <LocalShippingIcon sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
+          <Typography>No hay pedidos a domicilio activos.</Typography>
         </Box>
       ) : (
         <Grid container spacing={2}>
-          {mesas.map((mesa) => {
-            const hasPedido = !!mesa.pedido_actual?.ids_productos;
-            const productosPedido = hasPedido ? mesa.pedido_actual.ids_productos : [];
+          {comandas.map((comanda) => {
+            const hasPedido = !!comanda.ids_productos;
+            const productosPedido = hasPedido ? comanda.ids_productos : [];
             const productosLength = productosPedido.length;
             const totalPedido = productosPedido.reduce((acc, producto) => acc + (producto.precio || 0), 0);
             return (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={mesa._id}>
-              <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }, borderTop: `4px solid ${mesa.estado === 'disponible' ? '#4caf50' : '#ff9800'}` }}>
+            <Grid item xs={12} sm={6} md={4} lg={3} key={comanda._id}>
+              <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }, borderTop: '4px solid #e94560' }}>
                 <CardContent sx={{ pb: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                    <Typography variant="h4" fontWeight={800} color="#1a1a2e">#{mesa.numero_mesa}</Typography>
-                    <Chip label={estadoConfig[mesa.estado]?.label || mesa.estado} color={estadoConfig[mesa.estado]?.color || 'default'} size="small" />
+                    <Typography variant="h6" fontWeight={800} color="#1a1a2e">Domicilio</Typography>
+                    <Chip label="ACTIVO" color="error" size="small" />
                   </Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block', fontWeight: 600 }}>
+                    📍 {comanda.direccion_entrega || 'Sin dirección'}
+                  </Typography>
+                  {comanda.id_cliente && (
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                      👤 {comanda.id_cliente.nombre} {comanda.id_cliente.apellido}
+                    </Typography>
+                  )}
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {productosLength > 0 ? `${productosLength} producto(s) en pedido` : 'Sin pedido activo'}
+                    {productosLength > 0 ? `${productosLength} producto(s) en pedido` : 'Sin productos'}
                   </Typography>
                   {productosLength > 0 && (
-                    <Box sx={{ mb: 1.25, px: 1.5, py: 1, borderRadius: 2, bgcolor: '#edfaf0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="caption" fontWeight={800} color="success.dark">Total pedido</Typography>
-                      <Typography variant="body2" fontWeight={900} color="success.dark">
+                    <Box sx={{ mb: 1.25, px: 1.5, py: 1, borderRadius: 2, bgcolor: '#fce4ec', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="caption" fontWeight={800} color="#c2185b">Total pedido</Typography>
+                      <Typography variant="body2" fontWeight={900} color="#c2185b">
                         {formatoCOP.format(totalPedido)}
                       </Typography>
                     </Box>
                   )}
                   {hasPedido && productosPedido.slice(0, 3).map((plato, idx) => (
-                    <Chip key={plato._id ? `${plato._id}-${idx}` : idx} label={plato.nombre || 'Plato'} size="small" variant="outlined" sx={{ mr: 0.5, mb: 0.5, fontSize: '0.7rem' }} />
+                    <Chip key={plato._id ? `${plato._id}-${idx}` : idx} label={plato.nombre || 'Producto'} size="small" variant="outlined" sx={{ mr: 0.5, mb: 0.5, fontSize: '0.7rem' }} />
                   ))}
                   {productosLength > 3 && <Chip label={`+${productosLength - 3} más`} size="small" sx={{ fontSize: '0.7rem' }} />}
                 </CardContent>
@@ -347,27 +303,22 @@ const MesasPage = () => {
                   <Box sx={{ width: '100%', display: 'flex', gap: 1 }}>
                     {hasPedido && (
                       <>
-                        <Button size="small" variant="outlined" onClick={() => imprimirComanda(mesa)} startIcon={<PrintIcon />} sx={{ borderRadius: 2, flex: 1 }} title="Imprimir Comanda de Cocina">
+                        <Button size="small" variant="outlined" onClick={() => imprimirComanda(comanda)} startIcon={<PrintIcon />} sx={{ borderRadius: 2, flex: 1 }} title="Imprimir Comanda de Cocina">
                           Comanda
                         </Button>
-                        <Button size="small" variant="outlined" onClick={() => abrirModalPropina(mesa)} startIcon={<PrintIcon />} sx={{ borderRadius: 2, flex: 1 }}>
+                        <Button size="small" variant="outlined" onClick={() => abrirModalPropina(comanda)} startIcon={<PrintIcon />} sx={{ borderRadius: 2, flex: 1 }}>
                           Cuenta
                         </Button>
-                        <Button size="small" variant="contained" color="success" onClick={() => irAFacturar(mesa)} startIcon={<PointOfSaleIcon />} sx={{ borderRadius: 2, flex: 1 }}>
+                        <Button size="small" variant="contained" color="success" onClick={() => irAFacturar(comanda)} startIcon={<PointOfSaleIcon />} sx={{ borderRadius: 2, flex: 1 }}>
                           Facturar
                         </Button>
                       </>
                     )}
                   </Box>
-                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
+                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
                     {usuario?.rol !== 'cocina' && (
-                      <Tooltip title="Editar Estado y Comanda"><IconButton id={`edit-mesa-${mesa._id}`} size="small" onClick={() => abrirEditar(mesa)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="Editar Domicilio"><IconButton size="small" onClick={() => abrirEditar(comanda)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
                     )}
-                    {/* DESHABILITADO TEMPORALMENTE - No se eliminarán mesas por ahora
-                    {usuario?.rol === 'admin' && (
-                      <Tooltip title="Eliminar"><IconButton id={`delete-mesa-${mesa._id}`} size="small" onClick={() => setDeleteDialog({ open: true, id: mesa._id, numero: mesa.numero_mesa })} sx={{ color: '#e94560' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
-                    )}
-                    */}
                   </Box>
                 </CardActions>
               </Card>
@@ -376,32 +327,31 @@ const MesasPage = () => {
         </Grid>
       )}
 
-      {/* Modal Crear/Editar Mesa */}
+      {/* Modal Editar Domicilio */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 3, minHeight: '80vh' } }}>
         <DialogTitle sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', color: '#fff', fontWeight: 700 }}>
-          {editId ? `Editar Mesa #${form.numero_mesa}` : 'Nueva Mesa'}
+          Editar Domicilio
         </DialogTitle>
         <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
           <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={3}>
-                <TextField fullWidth label="Número de mesa" value={form.numero_mesa} disabled size="small" />
-              </Grid>
-              <Grid item xs={12} sm={3}>
-                <FormControl fullWidth size="small" disabled>
-                  <InputLabel>Estado Físico</InputLabel>
-                  <Select value={form.estado} label="Estado Físico" onChange={e => setForm(p => ({ ...p, estado: e.target.value }))}>
-                    <MenuItem value="disponible">Disponible</MenuItem>
-                    <MenuItem value="pedido tomado">Pedido Tomado</MenuItem>
-                  </Select>
-                </FormControl>
+              <Grid item xs={12} sm={12}>
+                <TextField 
+                  fullWidth 
+                  label="Dirección de Entrega" 
+                  value={form.direccion_entrega} 
+                  onChange={e => setForm(p => ({ ...p, direccion_entrega: e.target.value }))}
+                  size="small"
+                  error={!!formErrors.direccion_entrega}
+                  helperText={formErrors.direccion_entrega}
+                  placeholder="Calle, número, apartamento, referencias..."
+                />
               </Grid>
               
-              {/* Nuevo: Selector de Cliente al Editar Comanda */}
-              <Grid item xs={12} sm={7} md={8}>
+              {/* Selector de Cliente */}
+              <Grid item xs={12} sm={7} md={9}>
                 <Autocomplete
                   options={clientes}
-                  style={{width: "30vw"}}
                   getOptionLabel={(o) => o ? `${o.nombre || ''} ${o.apellido || ''} ${o.numero_documento ? `(${o.numero_documento})` : ''}`.trim() : ''}
                   value={selectedCliente}
                   onChange={(_, val) => setSelectedCliente(val)}
@@ -409,7 +359,7 @@ const MesasPage = () => {
                   noOptionsText="Cliente no encontrado"
                 />
               </Grid>
-              <Grid item xs={12} sm={5} md={4} lg={1} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}>
+              <Grid item xs={12} sm={5} md={3} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}>
                 <Tooltip title="Nuevo Cliente">
                   <Button variant="outlined" sx={{ minWidth: 0, height: 40, borderRadius: 2 }} onClick={() => setOpenModalCliente(true)}>
                     <PersonAddIcon />
@@ -445,10 +395,10 @@ const MesasPage = () => {
               </Grid>
             </Box>
             
-            {/* Carrito de la Mesa (Der) */}
+            {/* Carrito del Domicilio (Der) */}
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa' }}>
               <Box sx={{ p: 2, bgcolor: '#f0f0f0', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-                <Typography variant="subtitle2" fontWeight={700}>Productos en la Mesa</Typography>
+                <Typography variant="subtitle2" fontWeight={700}>Productos en Pedido</Typography>
               </Box>
               <Box sx={{ flex: 1, overflowY: 'auto' }}>
                 {form.pedido_actual.length === 0 ? (
@@ -481,8 +431,8 @@ const MesasPage = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-          <Button id="cancel-mesa-btn" onClick={() => setDialogOpen(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
-          <Button id="save-mesa-btn" onClick={guardar} variant="contained" sx={{ borderRadius: 2, background: 'linear-gradient(135deg, #e94560, #c62a47)' }}>{editId ? 'Actualizar' : 'Crear'}</Button>
+          <Button onClick={() => setDialogOpen(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button onClick={guardar} variant="contained" sx={{ borderRadius: 2, background: 'linear-gradient(135deg, #e94560, #c62a47)' }}>Actualizar</Button>
         </DialogActions>
       </Dialog>
 
@@ -520,27 +470,6 @@ const MesasPage = () => {
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => setOpenModalCliente(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
           <Button onClick={guardarCliente} variant="contained" sx={{ borderRadius: 2, background: '#1a1a2e' }}>Guardar y Seleccionar</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Confirmar Eliminar Mesa */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, numero: '', masterKey: '' })} PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>Eliminar Mesa</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ mb: 3 }}>
-            ¿Estás seguro de eliminar la <strong>Mesa #{deleteDialog.numero}</strong>? Esta acción es irreversible.
-            Ingresa la <strong>Clave Maestra</strong> para confirmar:
-          </Typography>
-          <TextField 
-            fullWidth label="Clave Maestra" type="password" size="small" autoComplete="off"
-            value={deleteDialog.masterKey} onChange={e => setDeleteDialog(p => ({ ...p, masterKey: e.target.value }))}
-            onKeyPress={(e) => e.key === 'Enter' && confirmarEliminar()}
-            autoFocus
-          />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-          <Button onClick={() => setDeleteDialog({ open: false, id: null, numero: '', masterKey: '' })} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
-          <Button id="confirm-delete-mesa-btn" onClick={confirmarEliminar} variant="contained" color="error" sx={{ borderRadius: 2 }}>Confirmar Eliminar</Button>
         </DialogActions>
       </Dialog>
 
@@ -613,7 +542,15 @@ const MesasPage = () => {
             <Typography fontSize="10px">Dir.: cra 62 # 72-28</Typography>
             <Typography fontSize="10px">Telf.: 315 075 2214</Typography>
             <Typography fontSize="10px">{reciboDatos.fecha}</Typography>
-            <Typography fontSize="10px" fontWeight="bold">Recibo de Cuenta - Mesa #{reciboDatos.numero_mesa}</Typography>
+            <Typography fontSize="10px" fontWeight="bold">Recibo de Cuenta - DOMICILIO</Typography>
+          </Box>
+
+          <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
+
+          {/* DIRECCIÓN */}
+          <Box sx={{ margin: '1.5mm 0', padding: '1.5mm', backgroundColor: '#f5f5f5', borderRadius: '2mm' }}>
+            <Typography fontSize="10px" fontWeight="bold">DESTINO:</Typography>
+            <Typography fontSize="10px">{reciboDatos.direccion}</Typography>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
@@ -635,32 +572,27 @@ const MesasPage = () => {
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
-          {/* SUBTOTAL */}
-          <Box sx={{ margin: '1.5mm 0' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '12px' }}>
-              <span>SUBTOTAL</span>
-              <span>${reciboDatos.totalPedido.toLocaleString('es-CO')}</span>
-            </Box>
+          {/* PROPINA SUGERIDA - SUTIL */}
+          <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography fontSize="8px" sx={{ color: '#666', fontStyle: 'italic', opacity: 0.7 }}>propina sugerida</Typography>
+            <Typography fontSize="9px" sx={{ color: '#666' }}>${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
           </Box>
 
-          {/* PROPINA SUGERIDA */}
-          <Box sx={{ border: '1px dashed #000', padding: '2mm', margin: '2mm 0', textAlign: 'center', backgroundColor: '#fafafa' }}>
-            <Typography fontWeight="bold" fontSize="11px" sx={{ margin: '1mm 0' }}>
-              PROPINA SUGERIDA {reciboDatos.tipoPropina === 'porcentaje' ? `(${reciboDatos.valorPropina}%)` : ''}
-            </Typography>
-            <Typography fontWeight="bold" fontSize="14px" sx={{ margin: '1.5mm 0' }}>
-              ${reciboDatos.montoPropina.toLocaleString('es-CO')}
-            </Typography>
-            <Typography fontSize="9px" sx={{ lineHeight: '1.2', margin: '1mm 0 0 0' }}>
-              La propina es voluntaria<br />
-            </Typography>
+          <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
+
+          {/* TOTAL */}
+          <Box sx={{ margin: '1.5mm 0' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
+              <span>TOTAL</span>
+              <span>${reciboDatos.totalPedido.toLocaleString('es-CO')}</span>
+            </Box>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
           {/* FOOTER */}
           <Typography sx={{ textAlign: 'center', fontWeight: 'bold', marginTop: '2mm', fontSize: '11px' }}>
-            ¡GRACIAS POR SU VISITA!
+            ¡GRACIAS POR SU COMPRA!
           </Typography>
         </Box>
       )}
@@ -693,14 +625,12 @@ const MesasPage = () => {
           <Box textAlign="center" mb={1}>
             <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '20px' }}>COMANDA DE COCINA</Typography>
             <Typography fontSize="14px">--------------------------------</Typography>
-            <Typography fontSize="16px" fontWeight="bold">
-              {comandaParaImprimir.a_domicilio ? 'PEDIDO A DOMICILIO' : `MESA #${comandaParaImprimir.mesa}`}
-            </Typography>
+            <Typography fontSize="16px" fontWeight="bold">PEDIDO A DOMICILIO</Typography>
             <Typography fontSize="14px">--------------------------------</Typography>
           </Box>
 
           <Box mb={2}>
-            <Typography fontSize="13px"><strong>Cliente:</strong> {comandaParaImprimir.cliente}</Typography>
+            <Typography fontSize="13px"><strong>Destino:</strong> {comandaParaImprimir.direccion}</Typography>
             <Typography fontSize="13px"><strong>Fecha:</strong> {comandaParaImprimir.fecha}</Typography>
           </Box>
 
@@ -731,4 +661,4 @@ const MesasPage = () => {
   );
 };
 
-export default MesasPage;
+export default DomiciliosPage;
