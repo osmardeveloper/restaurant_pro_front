@@ -694,17 +694,31 @@ const ProductosPage = () => {
       </Paper>
 
       {/* Modal Crear/Editar */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+      <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); setEditId(null); }} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
         <DialogTitle sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', color: '#fff', fontWeight: 700 }}>
           {editId ? 'Editar Producto' : 'Nuevo Producto'}
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
-          <TextField fullWidth label="Nombre" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} margin="normal" error={!!formErrors.nombre} helperText={formErrors.nombre} />
+          <TextField 
+            fullWidth 
+            label="Nombre" 
+            value={form.nombre || ''} 
+            onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} 
+            margin="normal" 
+            error={!!formErrors.nombre} 
+            helperText={formErrors.nombre} 
+          />
           
           <FormControl fullWidth margin="normal" error={!!formErrors.tipo}>
             <InputLabel>Categoría de Producto</InputLabel>
-            <Select value={form.tipo} label="Categoría de Producto" onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}>
-              {categorias.map(cat => <MenuItem key={cat.value} value={cat.value}>{cat.label}</MenuItem>)}
+            <Select 
+              value={form.tipo || ''} 
+              label="Categoría de Producto" 
+              onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
+            >
+              {categorias.map(cat => (
+                <MenuItem key={cat.value} value={cat.value}>{cat.label}</MenuItem>
+              ))}
             </Select>
             {formErrors.tipo && <Typography variant="caption" color="error" sx={{ mt: 0.5 }}>{formErrors.tipo}</Typography>}
           </FormControl>
@@ -713,23 +727,53 @@ const ProductosPage = () => {
             + Nueva Categoría
           </Button>
 
-          <TextField fullWidth label="Descripción" value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))} margin="normal" multiline rows={2} />
+          <TextField 
+            fullWidth 
+            label="Descripción" 
+            value={form.descripcion || ''} 
+            onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))} 
+            margin="normal" 
+            multiline 
+            rows={2} 
+          />
           
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField fullWidth label="Precio" value={form.precio} onChange={e => setForm(p => ({ ...p, precio: e.target.value }))} margin="normal" error={!!formErrors.precio} helperText={formErrors.precio} InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
+            <TextField 
+              fullWidth 
+              label="Precio" 
+              value={form.precio || ''} 
+              onChange={e => setForm(p => ({ ...p, precio: e.target.value }))} 
+              margin="normal" 
+              error={!!formErrors.precio} 
+              helperText={formErrors.precio} 
+              InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} 
+            />
             {(usuario?.rol === 'cajero' || usuario?.rol === 'admin') && (
-              <TextField fullWidth label="Costo (Opcional)" value={form.costo} onChange={e => setForm(p => ({ ...p, costo: e.target.value }))} margin="normal" error={!!formErrors.costo} helperText={formErrors.costo || ''} InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} />
+              <TextField 
+                fullWidth 
+                label="Costo (Opcional)" 
+                value={form.costo || ''} 
+                onChange={e => setForm(p => ({ ...p, costo: e.target.value }))} 
+                margin="normal" 
+                error={!!formErrors.costo} 
+                helperText={formErrors.costo || ''} 
+                InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} 
+              />
             )}
           </Box>
 
           <TextField 
-            fullWidth label="Stock Actual" value={form.cantidad} margin="normal" 
-            disabled helperText="Ajuste vía módulo de Inventario"
+            fullWidth 
+            label="Stock Actual" 
+            value={form.cantidad || ''} 
+            margin="normal" 
+            disabled 
+            helperText="Ajuste vía módulo de Inventario"
             InputProps={{ readOnly: true }}
           />
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
-          <Button onClick={() => setDialogOpen(false)}>Cancelar</Button>
+          <Button onClick={() => { setDialogOpen(false); setEditId(null); }}>Cancelar</Button>
           <Button onClick={guardar} disabled={loadingGuardar} variant="contained" sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2 }}>
             {loadingGuardar ? 'Guardando...' : (editId ? 'Actualizar' : 'Crear')}
           </Button>

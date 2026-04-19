@@ -101,6 +101,7 @@ export const comandaService = {
 export const facturacionService = {
   getAll:  ()      => api.get('/facturacion'),
   getById: (id)    => api.get(`/facturacion/${id}`),
+  getByComanda: (comandaId) => api.get(`/facturacion/comanda/${comandaId}`),
   create:  (datos) => api.post('/facturacion', datos),
   remove:  (id, masterKey) => api.delete(`/facturacion/${id}`, { headers: { 'x-master-key': masterKey } }),
 };

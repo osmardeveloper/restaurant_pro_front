@@ -63,6 +63,20 @@ const textoPropinasFactura = (factura) => {
     .join(', ');
 };
 
+const textoDomicilioFactura = (factura) => {
+  if (!factura.a_domicilio) return '-';
+  const monto = factura.monto_domicilio || 0;
+  const metodo = factura.metodo_pago_domicilio || 'N/A';
+  if (monto === 0) return 'Gratis';
+  return `${formatCol(monto)} ${metodo}`;
+};
+
+const totalDomicilioFacturas = (facturas) => {
+  return facturas
+    .filter(f => f.a_domicilio && f.monto_domicilio > 0)
+    .reduce((sum, f) => sum + Number(f.monto_domicilio || 0), 0);
+};
+
 const formatPeriodo = (iso) => {
   const [y, m, d] = iso.split('-');
   return new Date(Number(y), Number(m) - 1, Number(d))
@@ -330,6 +344,7 @@ const CierreCajaPage = () => {
                     <RCell isHeader>Cliente</RCell><RCell isHeader>Forma Pago</RCell>
                     <RCell isHeader>Total Factura</RCell>
                     <RCell isHeader>Propina</RCell>
+                    <RCell isHeader>Domicilio</RCell>
                     {METODOS_PAGO.map(m => <RCell isHeader align="center" key={m}>{m.toUpperCase()}</RCell>)}
                   </TableRow>
                 </TableHead>
@@ -350,6 +365,7 @@ const CierreCajaPage = () => {
                           <RCell>{nombreFormaPago(f)}</RCell>
                           <RCell>{formatCol(f.total_pagado)}</RCell>
                           <RCell>{textoPropinasFactura(f)}</RCell>
+                          <RCell>{textoDomicilioFactura(f)}</RCell>
                           {METODOS_PAGO.map(m => (
                             <RCell align="center" key={m}>
                               {pagosPorMetodo[m].montos.length === 0 ? (
@@ -371,6 +387,7 @@ const CierreCajaPage = () => {
                     <RCell isHeader colSpan={4} align="right">TOTALES FACTURADO</RCell>
                     <RCell isHeader color="#1976d2">{formatCol(globalesIngreso.total)}</RCell>
                     <RCell isHeader color="#ef6c00">{formatCol(globalesIngreso.propina)}</RCell>
+                    <RCell isHeader color="#1565c0">{formatCol(totalDomicilioFacturas(filtradas))}</RCell>
                     {METODOS_PAGO.map(m => <RCell isHeader align="center" key={m}>{formatCol(globalesIngreso[m])}</RCell>)}
                   </TableRow>
                 </TableBody>
@@ -500,7 +517,7 @@ const CierreCajaPage = () => {
         <table className="data">
           <thead>
             <tr>
-              <th>Factura</th><th>Fecha</th><th>Cliente</th><th>Forma Pago</th><th>Total</th><th>Propina</th>
+              <th>Factura</th><th>Fecha</th><th>Cliente</th><th>Forma Pago</th><th>Total</th><th>Propina</th><th>Domicilio</th>
               {METODOS_PAGO.map(m => <th key={m}>{m.toUpperCase()}</th>)}
             </tr>
           </thead>
@@ -516,6 +533,7 @@ const CierreCajaPage = () => {
                   <td>{nombreFormaPago(f)}</td>
                   <td>{formatCol(f.total_pagado)}</td>
                   <td>{textoPropinasFactura(f)}</td>
+                  <td>{textoDomicilioFactura(f)}</td>
                   {METODOS_PAGO.map(m => {
                     const pago = pagosPorMetodo[m];
                     return <td key={m} align="center">{pago.montos.length ? pago.montos.map(formatCol).join(' / ') : '$0'}</td>;
@@ -527,6 +545,7 @@ const CierreCajaPage = () => {
               <td colSpan={4} style={{ textAlign: 'right' }}>TOTALES</td>
               <td>{formatCol(globalesIngreso.total)}</td>
               <td>{formatCol(globalesIngreso.propina)}</td>
+              <td>{formatCol(totalDomicilioFacturas(filtradas))}</td>
               {METODOS_PAGO.map(m => <td key={m} align="center">{formatCol(globalesIngreso[m])}</td>)}
             </tr>
           </tbody>

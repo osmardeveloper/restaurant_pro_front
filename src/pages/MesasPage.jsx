@@ -139,7 +139,8 @@ const MesasPage = () => {
         productos: mesa.pedido_actual?.ids_productos || [],
         cliente: mesa.pedido_actual?.id_cliente || null,
         comandaId: mesa.pedido_actual?._id || null,
-        mesaId: mesa._id
+        mesaId: mesa._id,
+        tab: 3
       }
     });
   };
@@ -360,7 +361,7 @@ const MesasPage = () => {
                     )}
                   </Box>
                   <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
-                    {usuario?.rol !== 'cocina' && (
+                    {usuario?.rol === 'admin' && (
                       <Tooltip title="Editar Estado y Comanda"><IconButton id={`edit-mesa-${mesa._id}`} size="small" onClick={() => abrirEditar(mesa)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
                     )}
                     {/* DESHABILITADO TEMPORALMENTE - No se eliminarán mesas por ahora

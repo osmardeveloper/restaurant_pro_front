@@ -13,6 +13,7 @@ import PeopleIcon         from '@mui/icons-material/People';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import TableBarIcon       from '@mui/icons-material/TableBar';
 import LocalShippingIcon  from '@mui/icons-material/LocalShipping';
+import StorefrontIcon     from '@mui/icons-material/Storefront';
 import ReceiptLongIcon    from '@mui/icons-material/ReceiptLong';
 import LogoutIcon         from '@mui/icons-material/Logout';
 import InventoryIcon      from '@mui/icons-material/Inventory';
@@ -32,6 +33,7 @@ const DRAWER_WIDTH = 260;
 const navItems = [
   { key: 'mesas',        label: 'Mesas',        path: '/mesas',        icon: <TableBarIcon /> },
   { key: 'domicilios',   label: 'Domicilios',   path: '/domicilios',   icon: <LocalShippingIcon /> },
+  { key: 'venta_directa', label: 'Venta Directa', path: '/venta-directa', icon: <StorefrontIcon />, requierePermiso: true },
   { key: 'usuarios',     label: 'Usuarios',     path: '/usuarios',     icon: <PeopleIcon /> },
   { key: 'clientes',     label: 'Clientes',     path: '/clientes',     icon: <AssignmentIndIcon /> },
   { key: 'productos',    label: 'Platos y Productos',    path: '/productos',    icon: <LocalDiningIcon /> },

@@ -7,6 +7,7 @@ import {
   Grid, Paper, Tab, Tabs, Skeleton
 } from '@mui/material';
 import { publicProductoService, publicCategoriasService } from '../services/api';
+import './PublicMenuPage.css';
 
 const CATEGORIAS_ESTATICAS = [
   { value: 'platos_principales', label: 'Platos Principales' },
@@ -66,8 +67,26 @@ const PublicMenuPage = () => {
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)',
+        background: '#F4EFE4',
         pb: 4,
+        position: 'relative',
+        // Marca de agua del logo ampliado - toda la pantalla
+        '&::before': {
+          content: '""',
+          position: 'fixed',
+          top: '200px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '600px',
+          height: '600px',
+          backgroundImage: 'url("/images/logo_la_perla.png")',
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: 'contain',
+          backgroundPosition: 'center',
+          opacity: 0.06,
+          pointerEvents: 'none',
+          zIndex: 0,
+        }
       }}
     >
       {/* Header */}
@@ -76,24 +95,75 @@ const PublicMenuPage = () => {
           background: 'linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)',
           color: '#fff',
           py: 3,
-          textAlign: 'center',
+          px: 2,
           borderBottom: '3px solid #e94560',
           boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 3,
+          position: 'relative',
+          zIndex: 10,
+          '@media (max-width: 600px)': {
+            flexDirection: 'column',
+            textAlign: 'center',
+            gap: 2,
+          }
         }}
       >
-        <Typography variant="h5" fontWeight={600} sx={{ mb: 2, opacity: 0.95 }}>
-        La Perla Restaurante
-        </Typography>
-        <Typography variant="h4" fontWeight={700} sx={{ mb: 1 }}>
-          🍽️ Nuestro Menú
-        </Typography>
-        <Typography variant="body2" sx={{ opacity: 0.9 }}>
-          Descubre nuestras deliciosas opciones
-        </Typography>
+        {/* Logo Grande - Izquierda */}
+        <Box
+          sx={{
+            width: 180,
+            height: 180,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(255,255,255,0.1)',
+            borderRadius: '16px',
+            border: '2px solid rgba(233, 69, 96, 0.5)',
+            backdropFilter: 'blur(10px)',
+            overflow: 'hidden',
+            flexShrink: 0,
+            '@media (max-width: 600px)': {
+              width: 120,
+              height: 120,
+            }
+          }}
+        >
+          <img
+            src="/images/logo_la_perla.png"
+            alt="La Perla Restaurante"
+            style={{
+              width: '85%',
+              height: '85%',
+              objectFit: 'contain',
+            }}
+          />
+        </Box>
+
+        {/* Texto - Derecha */}
+        <Box sx={{
+          textAlign: 'left',
+          '@media (max-width: 600px)': {
+            textAlign: 'center',
+          }
+        }}>
+          <Typography variant="h5" fontWeight={600} sx={{ mb: 0.5, opacity: 0.95 }}>
+            La Perla
+          </Typography>
+          <Typography variant="h4" fontWeight={700} sx={{ mb: 1 }}>
+            🍽️ Menú
+          </Typography>
+          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+            Descubre nuestras deliciosas opciones
+          </Typography>
+        </Box>
       </Box>
 
       {/* Container Mobile */}
-      <Container maxWidth="sm" sx={{ mt: 3 }}>
+      <Container maxWidth="sm" sx={{ mt: 3, position: 'relative', zIndex: 2 }}>
         {/* Tabs de Categorías */}
         <Paper
           elevation={0}
@@ -161,15 +231,26 @@ const PublicMenuPage = () => {
                 <Grid item xs={12} key={producto._id}>
                   <Card
                     sx={{
-                      background: 'rgba(255,255,255,0.95)',
+                      background: 'rgba(255,255,255,0.97)',
                       borderRadius: 2,
-                      border: '1px solid rgba(233, 69, 96, 0.1)',
-                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      border: '1px solid rgba(15, 52, 96, 0.2)',
+                      transition: 'transform 0.2s, box-shadow 0.2s, border-color 0.2s',
                       '&:hover': {
                         transform: 'translateY(-4px)',
-                        boxShadow: '0 8px 24px rgba(233, 69, 96, 0.2)',
+                        boxShadow: '0 8px 24px rgba(15, 52, 96, 0.25)',
+                        borderColor: 'rgba(233, 69, 96, 0.4)',
                       },
                       overflow: 'hidden',
+                      position: 'relative',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: '3px',
+                        background: 'linear-gradient(90deg, #0f3460 0%, #e94560 100%)',
+                      }
                     }}
                   >
                     <CardContent sx={{ p: 2.5 }}>

@@ -43,6 +43,7 @@ const TomarPedidoPage = () => {
   const [selectedMesa,    setSelectedMesa]    = useState(null);
   const [carrito,         setCarrito]         = useState([]);
   const [a_domicilio,     setA_domicilio]     = useState(false);
+  const [venta_directa,   setVenta_directa]   = useState(false);
   
   const [busquedaProd, setBusquedaProd] = useState('');
   const [categoria, setCategoria] = useState('todas');
@@ -124,8 +125,8 @@ const TomarPedidoPage = () => {
   const [comandaParaImprimir, setComandaParaImprimir] = useState(null);
 
   const enviarPedido = async () => {
-    if (!a_domicilio && !selectedMesa) {
-      return showSnack('Debes seleccionar una mesa o marcar como pedido a domicilio.', 'warning');
+    if (!venta_directa && !a_domicilio && !selectedMesa) {
+      return showSnack('Debes seleccionar una mesa, marcar como pedido a domicilio o venta directa.', 'warning');
     }
     if (a_domicilio && !selectedCliente) {
       return showSnack('El cliente es obligatorio para pedidos a domicilio.', 'warning');
@@ -143,17 +144,19 @@ const TomarPedidoPage = () => {
         id_cliente: selectedCliente ? selectedCliente._id : undefined,
         ids_productos: carrito.map(p => p._id),
         a_domicilio: a_domicilio,
+        venta_directa: venta_directa,
         direccion_entrega: selectedCliente?.direccion || ''
       };
       await comandaService.create(datos);
       
       // Guardamos info para la impresión antes de limpiar
       setComandaParaImprimir({
-        mesa: selectedMesa ? selectedMesa.numero_mesa : 'Domicilio',
+        mesa: selectedMesa ? selectedMesa.numero_mesa : (a_domicilio ? 'Domicilio' : 'Venta Directa'),
         cliente: selectedCliente ? `${selectedCliente.nombre} ${selectedCliente.apellido}` : 'Consumidor Final',
         productos: [...carrito],
         fecha: new Date().toLocaleString(),
-        a_domicilio: a_domicilio
+        a_domicilio: a_domicilio,
+        venta_directa: venta_directa
       });
 
       // Abrir modal de éxito
@@ -217,7 +220,13 @@ const TomarPedidoPage = () => {
                     getOptionLabel={(option) => option ? `Mesa #${option.numero_mesa}` : ''}
                     value={selectedMesa}
                     style={{minWidth: "300px"}}
-                    onChange={(_, val) => setSelectedMesa(val)}
+                    onChange={(_, val) => {
+                      setSelectedMesa(val);
+                      if (val) {
+                        setVenta_directa(false);
+                        setA_domicilio(false);
+                      }
+                    }}
                     renderInput={(params) => <TextField {...params} label="Seleccionar Mesa (Solo Libres) *" size="small" />}
                     noOptionsText="Sin mesas libres"
                   />
@@ -233,8 +242,8 @@ const TomarPedidoPage = () => {
                 )}
               </Grid>
 
-              {/* Columna Derecha: Switch Pedido a Domicilio */}
-              <Grid item xs={12} sm={6} sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+              {/* Columna Derecha: Switches */}
+              <Grid item xs={12} sm={6} sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', gap: 2, flexWrap: 'wrap' }}>
                 <FormControlLabel
                   control={
                     <Switch
@@ -243,12 +252,30 @@ const TomarPedidoPage = () => {
                         setA_domicilio(e.target.checked);
                         if (e.target.checked) {
                           setSelectedMesa(null);
+                          setVenta_directa(false);
                         }
                       }}
                       color="primary"
                     />
                   }
                   label="Pedido a Domicilio"
+                  sx={{ m: 0 }}
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={venta_directa}
+                      onChange={(e) => {
+                        setVenta_directa(e.target.checked);
+                        if (e.target.checked) {
+                          setSelectedMesa(null);
+                          setA_domicilio(false);
+                        }
+                      }}
+                      color="success"
+                    />
+                  }
+                  label="Venta Directa"
                   sx={{ m: 0 }}
                 />
               </Grid>
@@ -262,7 +289,7 @@ const TomarPedidoPage = () => {
               <Autocomplete
                 fullWidth
                 options={clientes}
-                getOptionLabel={(o) => o ? `${o.nombre || ''} ${o.apellido || ''} ${o.numero_documento ? `(${o.numero_documento})` : ''}`.trim() : ''}
+                getOptionLabel={(o) => o ? `${o.nombre || ''} ${o.apellido || ''}${o.direccion ? `, Dir: ${o.direccion}` : ''}${o.numero_documento ? `, Doc: ${o.numero_documento}` : ''}${o.telefono ? `, Tel: ${o.telefono}` : ''}`.trim() : ''}
                 value={selectedCliente}
                 onChange={(_, val) => setSelectedCliente(val)}
                 renderInput={(params) => <TextField {...params} label="Buscar Cliente por Nombre o Documento (Opcional)" size="small" />}
@@ -380,7 +407,7 @@ const TomarPedidoPage = () => {
                 variant="contained" 
                 size="large" 
                 onClick={enviarPedido}
-                disabled={(a_domicilio ? (!selectedCliente || carrito.length === 0) : (!selectedMesa || carrito.length === 0))}
+                disabled={carrito.length === 0 || (venta_directa ? false : (a_domicilio ? !selectedCliente : !selectedMesa))}
                 sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, fontWeight: 700 }}
               >
                 Confirmar y Enviar
@@ -507,7 +534,7 @@ const TomarPedidoPage = () => {
             <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '20px' }}>COMANDA DE COCINA</Typography>
             <Typography fontSize="14px">--------------------------------</Typography>
             <Typography fontSize="16px" fontWeight="bold">
-              {comandaParaImprimir.a_domicilio ? 'PEDIDO A DOMICILIO' : `MESA #${comandaParaImprimir.mesa}`}
+              {comandaParaImprimir.a_domicilio ? 'PEDIDO A DOMICILIO' : (comandaParaImprimir.venta_directa ? 'VENTA DIRECTA' : `MESA #${comandaParaImprimir.mesa}`)}
             </Typography>
             <Typography fontSize="14px">--------------------------------</Typography>
           </Box>

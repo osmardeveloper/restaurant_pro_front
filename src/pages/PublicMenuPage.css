@@ -1,0 +1,113 @@
+/* ============================================================
+   PublicMenuPage.css — Estilos del Menú Público
+   Colores de La Perla Restaurante
+   ============================================================ */
+
+:root {
+  /* Colores del Logo La Perla */
+  --perla-dark-blue: #0f3460;    /* Azul marino oscuro */
+  --perla-light-blue: #1a1a2e;   /* Azul muy oscuro */
+  --perla-accent: #e94560;       /* Rosa/Rojo acento */
+  --perla-cream: #f5f1e8;        /* Crema claro */
+  --perla-teal: #1a9b8e;         /* Turquesa sutil */
+}
+
+/* Marca de agua del logo para fondo - Mobile optimizado */
+@media (max-width: 600px) {
+  /* La marca de agua usa la imagen del logo desde /assets/logo-perla.png */
+  /* Configurada con opacidad baja (0.08) para no interferir con contenido */
+  /* Se posiciona en el centro trasero del contenedor */
+}
+
+/* Estilos de las tarjetas con colores de La Perla */
+.menu-card {
+  border-left: 4px solid var(--perla-teal);
+  border-top: 3px solid var(--perla-accent);
+}
+
+.menu-card:hover {
+  border-left-color: var(--perla-accent);
+  box-shadow: 0 12px 32px rgba(233, 69, 96, 0.3);
+}
+
+/* Header del menú con colores coordinados */
+.menu-header {
+  background: linear-gradient(135deg, var(--perla-light-blue) 0%, var(--perla-dark-blue) 100%);
+  border-bottom: 3px solid var(--perla-accent);
+}
+
+/* Logo miniatura en header */
+.menu-logo-mini {
+  width: 100px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(233, 69, 96, 0.5);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  display: 'flex';
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.menu-logo-mini img {
+  width: 85%;
+  height: 85%;
+  object-fit: contain;
+}
+
+/* Tabs de categorías con estilos coherentes */
+.menu-tabs {
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 12px;
+}
+
+.menu-tabs .MuiTab-root {
+  color: #666 !important;
+  font-weight: 600 !important;
+}
+
+.menu-tabs .MuiTab-root.Mui-selected {
+  color: var(--perla-accent) !important;
+}
+
+.menu-tabs .MuiTabs-indicator {
+  background-color: var(--perla-accent) !important;
+  height: 4px !important;
+}
+
+/* Footer */
+.menu-footer {
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 3rem;
+  padding-bottom: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .menu-card {
+    border-left-width: 3px;
+    border-top-width: 2px;
+  }
+  
+  .menu-logo-mini {
+    width: 85px !important;
+    height: 85px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .menu-logo-mini {
+    width: 70px !important;
+    height: 70px !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .menu-card {
+    page-break-inside: avoid;
+  }
+}
+

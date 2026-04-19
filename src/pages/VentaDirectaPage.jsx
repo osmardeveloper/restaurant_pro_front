@@ -1,5 +1,5 @@
 // ============================================================
-// src/pages/DomiciliosPage.jsx — Vista de Pedidos a Domicilio
+// src/pages/VentaDirectaPage.jsx — Vista de Ventas Directas
 // ============================================================
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -12,17 +12,12 @@ import {
 import AddIcon          from '@mui/icons-material/Add';
 import EditIcon         from '@mui/icons-material/Edit';
 import DeleteIcon       from '@mui/icons-material/Delete';
-import LocalShippingIcon from '@mui/icons-material/LocalShipping';
-import PointOfSaleIcon   from '@mui/icons-material/PointOfSale';
-import PersonAddIcon     from '@mui/icons-material/PersonAdd';
+import StorefrontIcon   from '@mui/icons-material/Storefront';
+import PointOfSaleIcon  from '@mui/icons-material/PointOfSale';
+import PersonAddIcon    from '@mui/icons-material/PersonAdd';
 import PrintIcon        from '@mui/icons-material/Print';
-import { productoService, comandaService, clienteService } from '../services/api';
+import { productoService, comandaService, clienteService, facturacionService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-
-const estadoConfig = {
-  'disponible':    { label: 'Disponible',    color: 'success' },
-  'pedido tomado': { label: 'Pedido Tomado', color: 'warning' },
-};
 
 const TIPOS_DOCUMENTO = [
   { value: 'cedula_identidad', label: 'Cédula de Identidad' },
@@ -31,9 +26,9 @@ const TIPOS_DOCUMENTO = [
   { value: 'documento_extranjero', label: 'Documento Extranjero' },
 ];
 
-const FORM_INICIAL = { estado: 'disponible', pedido_actual: [], comanda_id: null, direccion_entrega: '' };
+const FORM_INICIAL = { estado: 'disponible', pedido_actual: [], comanda_id: null };
 
-const DomiciliosPage = () => {
+const VentaDirectaPage = () => {
   const { usuario } = useAuth();
   const navigate = useNavigate();
   const [comandas, setComandas]         = useState([]);
@@ -54,9 +49,9 @@ const DomiciliosPage = () => {
   // Modal Propina Sugerida para Imprimir Cuenta
   const [openPropina, setOpenPropina] = useState(false);
   const [comandaPropina, setComandaPropina] = useState(null);
-  const [tipoPropina, setTipoPropina] = useState('porcentaje'); // 'porcentaje' o 'monto'
+  const [tipoPropina, setTipoPropina] = useState('porcentaje');
   const [valorPropina, setValorPropina] = useState('');
-  const [reciboDatos, setReciboDatos] = useState(null); // Estado para los datos del recibo
+  const [reciboDatos, setReciboDatos] = useState(null);
 
   // Estado para impresión de comanda
   const [comandaParaImprimir, setComandaParaImprimir] = useState(null);
@@ -75,9 +70,9 @@ const DomiciliosPage = () => {
         productoService.getAll(),
         clienteService.getAll()
       ]);
-      // Filtrar: solo comandas a domicilio y NO facturadas
-      const domicilios = comandasRes.data.filter(c => c.a_domicilio === true && c.facturada === false);
-      setComandas(domicilios);
+      // Filtrar: solo comandas venta_directa y NO facturadas
+      const ventasDirectas = comandasRes.data.filter(c => c.venta_directa === true && c.facturada === false);
+      setComandas(ventasDirectas);
       setPlatos(productosRes.data); 
       setClientes(cliRes.data);
     } catch {
@@ -91,7 +86,6 @@ const DomiciliosPage = () => {
 
   const validar = () => {
     const errors = {};
-    if (!form.direccion_entrega) errors.direccion_entrega = 'La dirección de entrega es requerida.';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -100,7 +94,6 @@ const DomiciliosPage = () => {
     setEditId(comanda._id);
     const productos = comanda.ids_productos || [];
     
-    // Carga de cliente si existe
     let currentClient = null;
     if (comanda.id_cliente) {
        currentClient = clientes.find(c => c._id === comanda.id_cliente._id || c._id === comanda.id_cliente);
@@ -110,8 +103,7 @@ const DomiciliosPage = () => {
     setForm({ 
       estado: 'pedido tomado',
       pedido_actual: productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9) })),
-      comanda_id: comanda._id || null,
-      direccion_entrega: comanda.direccion_entrega || ''
+      comanda_id: comanda._id || null
     });
     setBusquedaProd('');
     setFormErrors({});
@@ -124,7 +116,7 @@ const DomiciliosPage = () => {
         productos: comanda.ids_productos || [],
         cliente: comanda.id_cliente || null,
         comandaId: comanda._id,
-        a_domicilio: true,
+        venta_directa: true,
         tab: 3
       }
     });
@@ -142,14 +134,11 @@ const DomiciliosPage = () => {
     if (!validar()) return;
     try {
       if (editId) {
-        // Actualizar comanda
         await comandaService.update(editId, { 
           ids_productos: form.pedido_actual.map(p => p._id),
-          id_cliente: selectedCliente ? selectedCliente._id : null,
-          direccion_entrega: form.direccion_entrega
+          id_cliente: selectedCliente ? selectedCliente._id : null
         });
-        
-        showSnack('Domicilio y pedido actualizados correctamente.');
+        showSnack('Venta Directa y pedido actualizados correctamente.');
       } 
       setDialogOpen(false);
       fetchData();
@@ -178,39 +167,73 @@ const DomiciliosPage = () => {
     setOpenPropina(true);
   };
 
-  const imprimirCuentaConPropina = () => {
+  const imprimirCuentaConPropina = async () => {
     if (!valorPropina || isNaN(Number(valorPropina))) {
       showSnack('Ingresa un valor válido de propina.', 'warning');
       return;
     }
 
-    const totalPedido = comandaPropina.ids_productos.reduce((acc, p) => acc + (p.precio || 0), 0);
-    const montoPropina = tipoPropina === 'porcentaje' 
-      ? (totalPedido * Number(valorPropina)) / 100 
-      : Number(valorPropina);
+    try {
+      const totalPedido = comandaPropina.ids_productos.reduce((acc, p) => acc + (p.precio || 0), 0);
+      const montoPropina = tipoPropina === 'porcentaje' 
+        ? (totalPedido * Number(valorPropina)) / 100 
+        : Number(valorPropina);
 
-    // Actualizar estado con los datos del recibo
-    setReciboDatos({
-      direccion: comandaPropina.direccion_entrega,
-      productos: comandaPropina.ids_productos,
-      totalPedido,
-      montoPropina,
-      tipoPropina,
-      valorPropina,
-      fecha: new Date().toLocaleString('es-CO')
-    });
+      // Crear payload de facturación igual a FacturacionPage
+      const payload = {
+        metodo_pago: 'EFECTIVO',
+        total_pagado: totalPedido + montoPropina,
+        id_cliente: comandaPropina.id_cliente?._id || null,
+        detalle_pedido: comandaPropina.ids_productos.map(p => ({
+          id_producto: p._id,
+          nombre: p.nombre,
+          precio: p.precio,
+          costo: p.costo || null,
+          cantidad: 1
+        })),
+        id_comanda: comandaPropina._id,
+        a_domicilio: false,
+        venta_directa: true,
+        direccion_entrega: '',
+        monto_domicilio: 0,
+        propinas: [{ 
+          tipo: tipoPropina,
+          valor: Number(valorPropina),
+          monto: montoPropina 
+        }]
+      };
 
-    setOpenPropina(false);
-    setValorPropina('');
-    
-    // Dar tiempo a React de renderizar antes de imprimir
-    setTimeout(() => {
-      window.print();
-      // Limpiar datos después de imprimir
+      // 1. Crear la Facturación
+      await facturacionService.create(payload);
+
+      // 2. Marcar comanda como facturada
+      await comandaService.update(comandaPropina._id, { facturada: true });
+
+      // 3. Preparar datos para imprimir recibo
+      setReciboDatos({
+        productos: comandaPropina.ids_productos,
+        totalPedido,
+        montoPropina,
+        tipoPropina,
+        valorPropina,
+        fecha: new Date().toLocaleString('es-CO')
+      });
+
+      setOpenPropina(false);
+      setValorPropina('');
+      
       setTimeout(() => {
-        setReciboDatos(null);
-      }, 1000);
-    }, 300);
+        window.print();
+        setTimeout(() => {
+          setReciboDatos(null);
+          fetchData(); // Recargar lista de ventas directas
+        }, 1000);
+      }, 300);
+
+      showSnack('Factura guardada y lista para imprimir.', 'success');
+    } catch (err) {
+      showSnack(err.response?.data?.message || 'Error al procesar la factura.', 'error');
+    }
   };
 
   const imprimirComanda = (comanda) => {
@@ -221,11 +244,11 @@ const DomiciliosPage = () => {
       : 'Consumidor Final';
 
     setComandaParaImprimir({
-      direccion: comanda.direccion_entrega,
       cliente: clienteInfo,
       productos: comanda.ids_productos || [],
       fecha: new Date().toLocaleString('es-MX'),
-      a_domicilio: true
+      venta_directa: true,
+      mesa: 'Venta Directa'
     });
 
     setTimeout(() => {
@@ -244,22 +267,22 @@ const DomiciliosPage = () => {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Box sx={{ p: 1, borderRadius: 2, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }}>
-            <LocalShippingIcon sx={{ color: '#fff', display: 'block' }} />
+          <Box sx={{ p: 1, borderRadius: 2, background: 'linear-gradient(135deg, #4caf50, #388e3c)' }}>
+            <StorefrontIcon sx={{ color: '#fff', display: 'block' }} />
           </Box>
           <Box>
-            <Typography variant="h5" fontWeight={700} color="#1a1a2e">Domicilios</Typography>
-            <Typography variant="body2" color="text.secondary">{comandas.length} pedido(s) activo(s)</Typography>
+            <Typography variant="h5" fontWeight={700} color="#1a1a2e">Ventas Directas</Typography>
+            <Typography variant="body2" color="text.secondary">{comandas.length} venta(s) activa(s)</Typography>
           </Box>
         </Box>
       </Box>
 
       {loading ? (
-        <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>Cargando domicilios...</Box>
+        <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>Cargando ventas directas...</Box>
       ) : comandas.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
-          <LocalShippingIcon sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
-          <Typography>No hay pedidos a domicilio activos.</Typography>
+          <StorefrontIcon sx={{ fontSize: 64, mb: 2, opacity: 0.3 }} />
+          <Typography>No hay ventas directas activas.</Typography>
         </Box>
       ) : (
         <Grid container spacing={2}>
@@ -270,15 +293,12 @@ const DomiciliosPage = () => {
             const totalPedido = productosPedido.reduce((acc, producto) => acc + (producto.precio || 0), 0);
             return (
             <Grid item xs={12} sm={6} md={4} lg={3} key={comanda._id}>
-              <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }, borderTop: '4px solid #e94560' }}>
+              <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }, borderTop: '4px solid #4caf50' }}>
                 <CardContent sx={{ pb: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                    <Typography variant="h6" fontWeight={800} color="#1a1a2e">Domicilio</Typography>
-                    <Chip label="ACTIVO" color="error" size="small" />
+                    <Typography variant="h6" fontWeight={800} color="#1a1a2e">Venta Directa</Typography>
+                    <Chip label="ACTIVO" color="success" size="small" />
                   </Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block', fontWeight: 600 }}>
-                    📍 {comanda.direccion_entrega || 'Sin dirección'}
-                  </Typography>
                   {comanda.id_cliente && (
                     <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
                       👤 {comanda.id_cliente.nombre} {comanda.id_cliente.apellido}
@@ -288,9 +308,9 @@ const DomiciliosPage = () => {
                     {productosLength > 0 ? `${productosLength} producto(s) en pedido` : 'Sin productos'}
                   </Typography>
                   {productosLength > 0 && (
-                    <Box sx={{ mb: 1.25, px: 1.5, py: 1, borderRadius: 2, bgcolor: '#fce4ec', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="caption" fontWeight={800} color="#c2185b">Total pedido</Typography>
-                      <Typography variant="body2" fontWeight={900} color="#c2185b">
+                    <Box sx={{ mb: 1.25, px: 1.5, py: 1, borderRadius: 2, bgcolor: '#e8f5e9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="caption" fontWeight={800} color="#2e7d32">Total pedido</Typography>
+                      <Typography variant="body2" fontWeight={900} color="#2e7d32">
                         {formatoCOP.format(totalPedido)}
                       </Typography>
                     </Box>
@@ -318,7 +338,7 @@ const DomiciliosPage = () => {
                   </Box>
                   <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
                     {usuario?.rol === 'admin' && (
-                      <Tooltip title="Editar Domicilio"><IconButton size="small" onClick={() => abrirEditar(comanda)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="Editar Venta Directa"><IconButton size="small" onClick={() => abrirEditar(comanda)} sx={{ color: '#4caf50' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
                     )}
                   </Box>
                 </CardActions>
@@ -328,27 +348,14 @@ const DomiciliosPage = () => {
         </Grid>
       )}
 
-      {/* Modal Editar Domicilio */}
+      {/* Modal Editar Venta Directa */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 3, minHeight: '80vh' } }}>
-        <DialogTitle sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', color: '#fff', fontWeight: 700 }}>
-          Editar Domicilio
+        <DialogTitle sx={{ background: 'linear-gradient(135deg, #4caf50, #388e3c)', color: '#fff', fontWeight: 700 }}>
+          Editar Venta Directa
         </DialogTitle>
         <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
           <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={12}>
-                <TextField 
-                  fullWidth 
-                  label="Dirección de Entrega" 
-                  value={form.direccion_entrega} 
-                  onChange={e => setForm(p => ({ ...p, direccion_entrega: e.target.value }))}
-                  size="small"
-                  error={!!formErrors.direccion_entrega}
-                  helperText={formErrors.direccion_entrega}
-                  placeholder="Calle, número, apartamento, referencias..."
-                />
-              </Grid>
-              
               {/* Selector de Cliente */}
               <Grid item xs={12} sm={7} md={9}>
                 <Autocomplete
@@ -367,7 +374,6 @@ const DomiciliosPage = () => {
                   </Button>
                 </Tooltip>
               </Grid>
-
             </Grid>
           </Box>
           <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -383,7 +389,7 @@ const DomiciliosPage = () => {
                   <Grid item xs={12} sm={6} md={4} key={prod._id}>
                     <Box 
                       onClick={() => agregarProducto(prod)}
-                      sx={{ p: 1.5, border: '1px solid rgba(0,0,0,0.1)', borderRadius: 2, cursor: 'pointer', transition: 'all 0.2s', '&:hover': { borderColor: '#e94560', bgcolor: 'rgba(233,69,96,0.04)' } }}
+                      sx={{ p: 1.5, border: '1px solid rgba(0,0,0,0.1)', borderRadius: 2, cursor: 'pointer', transition: 'all 0.2s', '&:hover': { borderColor: '#4caf50', bgcolor: 'rgba(76,175,80,0.04)' } }}
                     >
                       <Typography variant="body2" fontWeight={700} noWrap>{prod.nombre}</Typography>
                       <Typography variant="caption" color="text.secondary" display="block">{prod.tipo}</Typography>
@@ -396,15 +402,15 @@ const DomiciliosPage = () => {
               </Grid>
             </Box>
             
-            {/* Carrito del Domicilio (Der) */}
+            {/* Carrito de la Venta Directa (Der) */}
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa' }}>
               <Box sx={{ p: 2, bgcolor: '#f0f0f0', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-                <Typography variant="subtitle2" fontWeight={700}>Productos en Pedido</Typography>
+                <Typography variant="subtitle2" fontWeight={700}>Productos del Pedido</Typography>
               </Box>
               <Box sx={{ flex: 1, overflowY: 'auto' }}>
                 {form.pedido_actual.length === 0 ? (
                   <Typography variant="body2" color="text.secondary" textAlign="center" mt={4}>
-                    No hay productos asignados.
+                    Esta venta no tiene productos.
                   </Typography>
                 ) : (
                   form.pedido_actual.map((item, index) => (
@@ -422,8 +428,8 @@ const DomiciliosPage = () => {
                   ))
                 )}
               </Box>
-              <Box sx={{ p: 2, bgcolor: '#1a1a2e', color: '#fff' }}>
-                <Typography variant="caption" sx={{ opacity: 0.8 }}>Gran Total</Typography>
+              <Box sx={{ p: 2, bgcolor: '#4caf50', color: '#fff' }}>
+                <Typography variant="caption" sx={{ opacity: 0.8 }}>Total Venta</Typography>
                 <Typography variant="h6" fontWeight={700}>
                   {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalEdicion)}
                 </Typography>
@@ -433,77 +439,63 @@ const DomiciliosPage = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
           <Button onClick={() => setDialogOpen(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
-          <Button onClick={guardar} variant="contained" sx={{ borderRadius: 2, background: 'linear-gradient(135deg, #e94560, #c62a47)' }}>Actualizar</Button>
+          <Button onClick={guardar} variant="contained" sx={{ borderRadius: 2, background: 'linear-gradient(135deg, #4caf50, #388e3c)' }}>Actualizar Venta</Button>
         </DialogActions>
       </Dialog>
 
-      {/* Modal Crear Cliente */}
-      <Dialog open={openModalCliente} onClose={() => setOpenModalCliente(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, zIndex: 9999 } }}>
-        <DialogTitle sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', color: '#fff', fontWeight: 700 }}>
-          Crear Cliente Rápido
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField fullWidth label="Nombre" value={formCliente.nombre} onChange={e => setFormCliente(p => ({ ...p, nombre: e.target.value }))} margin="normal" size="small"/>
-            <TextField fullWidth label="Apellido" value={formCliente.apellido} onChange={e => setFormCliente(p => ({ ...p, apellido: e.target.value }))} margin="normal" size="small"/>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField
-              select fullWidth label="Documento" value={formCliente.tipo_documento}
-              onChange={e => setFormCliente(p => ({ ...p, tipo_documento: e.target.value }))} margin="normal" size="small" SelectProps={{ native: true }}
-            >
-              <option value=""></option>
-              {TIPOS_DOCUMENTO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </TextField>
-            <TextField fullWidth label="Número" value={formCliente.numero_documento} onChange={e => setFormCliente(p => ({ ...p, numero_documento: e.target.value }))} margin="normal" size="small"/>
-          </Box>
-          <TextField fullWidth label="Teléfono" value={formCliente.telefono} onChange={e => setFormCliente(p => ({ ...p, telefono: e.target.value }))} margin="normal" size="small"/>
+      {/* Modal Crear Cliente Rápido */}
+      <Dialog open={openModalCliente} onClose={() => setOpenModalCliente(false)} sx={{ '& .MuiDialog-paper': { borderRadius: 3 } }}>
+        <DialogTitle fontWeight={700}>Nuevo Cliente</DialogTitle>
+        <DialogContent sx={{ minWidth: 350, my: 2 }}>
           <TextField 
-            fullWidth 
-            label="Dirección"
-            value={formCliente.direccion} 
-            onChange={e => setFormCliente(p => ({ ...p, direccion: e.target.value }))} 
-            margin="normal" 
-            size="small"
-            placeholder="Calle, número, apartamento..."
+            fullWidth label="Nombre" size="small" 
+            value={formCliente.nombre} onChange={e => setFormCliente({...formCliente, nombre: e.target.value})}
+            sx={{ mb: 1.5 }}
           />
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button onClick={() => setOpenModalCliente(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
-          <Button onClick={guardarCliente} variant="contained" sx={{ borderRadius: 2, background: '#1a1a2e' }}>Guardar y Seleccionar</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Propina Sugerida para Imprimir Cuenta */}
-      <Dialog open={openPropina} onClose={() => { setOpenPropina(false); setValorPropina(''); }} PaperProps={{ sx: { borderRadius: 3, minWidth: 400 } }}>
-        <DialogTitle sx={{ fontWeight: 700 }}>Propina Sugerida</DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <FormControl fullWidth size="small" sx={{ mb: 2, mt: 2 }}>
-            <InputLabel>Tipo de Propina</InputLabel>
-            <Select value={tipoPropina} label="Tipo de Propina" onChange={e => setTipoPropina(e.target.value)}>
-              <MenuItem value="porcentaje">Porcentaje (%)</MenuItem>
-              <MenuItem value="monto">Monto Fijo ($)</MenuItem>
+          <TextField 
+            fullWidth label="Apellido" size="small" 
+            value={formCliente.apellido} onChange={e => setFormCliente({...formCliente, apellido: e.target.value})}
+            sx={{ mb: 1.5 }}
+          />
+          <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
+            <InputLabel>Tipo Documento</InputLabel>
+            <Select value={formCliente.tipo_documento} onChange={e => setFormCliente({...formCliente, tipo_documento: e.target.value})} label="Tipo Documento">
+              {TIPOS_DOCUMENTO.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
             </Select>
           </FormControl>
           <TextField 
-            fullWidth
-            label={tipoPropina === 'porcentaje' ? 'Porcentaje (%)' : 'Monto ($)'}
-            type="number"
-            size="small"
-            value={valorPropina}
-            onChange={e => setValorPropina(e.target.value)}
-            placeholder={tipoPropina === 'porcentaje' ? '10' : '5000'}
-            autoFocus
-            onKeyPress={(e) => e.key === 'Enter' && imprimirCuentaConPropina()}
+            fullWidth label="Número Documento" size="small" 
+            value={formCliente.numero_documento} onChange={e => setFormCliente({...formCliente, numero_documento: e.target.value})}
+            sx={{ mb: 1.5 }}
+          />
+          <TextField 
+            fullWidth label="Teléfono" size="small" 
+            value={formCliente.telefono} onChange={e => setFormCliente({...formCliente, telefono: e.target.value})}
           />
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-          <Button onClick={() => { setOpenPropina(false); setValorPropina(''); }} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
-          <Button onClick={() => { imprimirCuentaConPropina(); setOpenPropina(false); setValorPropina(''); }} variant="contained" sx={{ borderRadius: 2, background: '#1a1a2e' }}>Imprimir</Button>
-        </DialogActions>
+        <DialogActions><Button onClick={() => setOpenModalCliente(false)}>Cancelar</Button><Button onClick={guardarCliente} variant="contained">Guardar</Button></DialogActions>
       </Dialog>
 
-      {/* Contenedor de Impresión - Recibo de Cuenta */}
+      {/* Modal Propina */}
+      <Dialog open={openPropina} onClose={() => setOpenPropina(false)}>
+        <DialogTitle fontWeight={700}>Propina Sugerida</DialogTitle>
+        <DialogContent sx={{ minWidth: 350, py: 2 }}>
+          <FormControl fullWidth size="small" sx={{ mb: 2, mt: 2 }}>
+            <InputLabel>Tipo</InputLabel>
+            <Select value={tipoPropina} onChange={e => setTipoPropina(e.target.value)} label="Tipo">
+              <MenuItem value="porcentaje">Porcentaje (%)</MenuItem>
+              <MenuItem value="monto">Monto ($)</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField 
+            fullWidth label={tipoPropina === 'porcentaje' ? 'Porcentaje' : 'Monto'} type="number" 
+            value={valorPropina} onChange={e => setValorPropina(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions><Button onClick={() => setOpenPropina(false)}>Cancelar</Button><Button onClick={imprimirCuentaConPropina} variant="contained">Imprimir Cuenta</Button></DialogActions>
+      </Dialog>
+
+      {/* Impresión Recibo Venta Directa */}
       {reciboDatos && (
         <Box className="print-only">
           <style>
@@ -543,15 +535,7 @@ const DomiciliosPage = () => {
             <Typography fontSize="10px">Dir.: cra 62 # 72-28</Typography>
             <Typography fontSize="10px">Telf.: 315 075 2214</Typography>
             <Typography fontSize="10px">{reciboDatos.fecha}</Typography>
-            <Typography fontSize="10px" fontWeight="bold">Recibo de Cuenta - DOMICILIO</Typography>
-          </Box>
-
-          <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
-
-          {/* DIRECCIÓN */}
-          <Box sx={{ margin: '1.5mm 0', padding: '1.5mm', backgroundColor: '#f5f5f5', borderRadius: '2mm' }}>
-            <Typography fontSize="10px" fontWeight="bold">DESTINO:</Typography>
-            <Typography fontSize="10px">{reciboDatos.direccion}</Typography>
+            <Typography fontSize="10px" fontWeight="bold">Recibo de Cuenta - VENTA DIRECTA</Typography>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
@@ -598,7 +582,7 @@ const DomiciliosPage = () => {
         </Box>
       )}
 
-      {/* COMPONENTE DE IMPRESIÓN DE COMANDA (OCULTO) */}
+      {/* Impresión Comanda de Cocina - Venta Directa */}
       {comandaParaImprimir && (
         <Box className="print-only">
           <style>
@@ -626,12 +610,14 @@ const DomiciliosPage = () => {
           <Box textAlign="center" mb={1}>
             <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '20px' }}>COMANDA DE COCINA</Typography>
             <Typography fontSize="14px">--------------------------------</Typography>
-            <Typography fontSize="16px" fontWeight="bold">PEDIDO A DOMICILIO</Typography>
+            <Typography fontSize="16px" fontWeight="bold">
+              VENTA DIRECTA
+            </Typography>
             <Typography fontSize="14px">--------------------------------</Typography>
           </Box>
 
           <Box mb={2}>
-            <Typography fontSize="13px"><strong>Destino:</strong> {comandaParaImprimir.direccion}</Typography>
+            <Typography fontSize="13px"><strong>Cliente:</strong> {comandaParaImprimir.cliente}</Typography>
             <Typography fontSize="13px"><strong>Fecha:</strong> {comandaParaImprimir.fecha}</Typography>
           </Box>
 
@@ -655,11 +641,12 @@ const DomiciliosPage = () => {
         </Box>
       )}
 
-      <Snackbar open={snack.open} autoHideDuration={4000} onClose={() => setSnack(p => ({ ...p, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
-        <Alert severity={snack.severity} variant="filled" sx={{ borderRadius: 2 }}>{snack.msg}</Alert>
+      {/* Snackbar */}
+      <Snackbar open={snack.open} autoHideDuration={3000} onClose={() => setSnack({ ...snack, open: false })}>
+        <Alert severity={snack.severity} sx={{ borderRadius: 2 }}>{snack.msg}</Alert>
       </Snackbar>
     </Box>
   );
 };
 
-export default DomiciliosPage;
+export default VentaDirectaPage;

@@ -9,7 +9,7 @@ import {
   Divider, Snackbar, Alert, Tabs, Tab, Tooltip, InputAdornment,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip,
-  CircularProgress
+  CircularProgress, FormControlLabel, Switch
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PrintIcon from '@mui/icons-material/Print';
@@ -22,6 +22,7 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import TableBarIcon from '@mui/icons-material/TableBar';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import WarningIcon from '@mui/icons-material/Warning';
 import { productoService, clienteService, facturacionService, mesaService, comandaService, costoService, categoriasProductosService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -72,6 +73,7 @@ const FacturacionPage = () => {
   const [idComandaVinculada, setIdComandaVinculada] = useState(null);
   const [mesaSeleccionada, setMesaSeleccionada] = useState(null);
   const [a_domicilio, setA_domicilio] = useState(false);
+  const [venta_directa, setVenta_directa] = useState(false);
   const [direccion_entrega, setDireccion_entrega] = useState('');
   const [busquedaProd, setBusquedaProd] = useState('');
   const [categoria, setCategoria] = useState('todas');
@@ -109,6 +111,10 @@ const FacturacionPage = () => {
   const [modoContaDividida, setModoContaDividida] = useState(false);
   const [propinas, setPropinas] = useState([]);
   const [formPropina, setFormPropina] = useState({ metodo_pago: '', monto: '' });
+  
+  // Estados para Domicilio
+  const [montoDomicilio, setMontoDomicilio] = useState(0);
+  const [metodoPagoDomicilio, setMetodoPagoDomicilio] = useState('');
 
   const showSnack = (msg, severity = 'success') => setSnack({ open: true, msg, severity });
 
@@ -148,9 +154,17 @@ const FacturacionPage = () => {
 
       // Si venimos de la pantalla de comandas (navegación directa)
       if (navState?.comandaId) {
-        setPedidoActual(navState.productos || []);
+        const productosConUid = (navState.productos || []).map(p => ({
+          ...p,
+          uid: p.uid || Math.random().toString(36).substr(2, 9)
+        }));
+        setPedidoActual(productosConUid);
         setIdComandaVinculada(navState.comandaId);
         setA_domicilio(navState.a_domicilio || false);
+        setVenta_directa(navState.venta_directa || false);
+        setDireccion_entrega(navState.direccion_entrega || '');
+        setMontoDomicilio(0); // Reset, se pide durante facturación
+        setMetodoPagoDomicilio('');
         const mesaVinculada = navState.mesaId
           ? resM.data.find(m => m._id === navState.mesaId)
           : resM.data.find(m => m.pedido_actual?._id === navState.comandaId);
@@ -161,6 +175,10 @@ const FacturacionPage = () => {
         }
         // Limpiamos el estado para evitar recargas infinitas
         navigate(location.pathname, { replace: true });
+        // Si viene indicado un tab específico, usarlo
+        if (navState?.tab !== undefined) {
+          setTab(navState.tab);
+        }
       }
     } catch (error) {
       console.error(error);
@@ -171,6 +189,13 @@ const FacturacionPage = () => {
   }, [navState, navigate, location.pathname]);
 
   useEffect(() => { fetchDatos(); }, [fetchDatos]);
+
+  // Sincronizar dirección de cliente cuando es domicilio
+  useEffect(() => {
+    if (a_domicilio && cliente && cliente.direccion && !direccion_entrega) {
+      setDireccion_entrega(cliente.direccion);
+    }
+  }, [a_domicilio, cliente, direccion_entrega]);
 
   const cargarComandaPorMesa = async (mesaId) => {
     if (!mesaId) {
@@ -185,9 +210,17 @@ const FacturacionPage = () => {
       );
 
       if (comandaActiva) {
-        setPedidoActual(comandaActiva.ids_productos || []);
+        const productosConUid = (comandaActiva.ids_productos || []).map(p => ({
+          ...p,
+          uid: p.uid || Math.random().toString(36).substr(2, 9)
+        }));
+        setPedidoActual(productosConUid);
         setCliente(comandaActiva.id_cliente || null);
         setIdComandaVinculada(comandaActiva._id);
+        setA_domicilio(comandaActiva.a_domicilio || false);
+        setDireccion_entrega(comandaActiva.direccion_entrega || '');
+        setMontoDomicilio(0); // Reset monto, se pide durante la facturación
+        setMetodoPagoDomicilio('');
         showSnack(`Comanda de la Mesa #${comandaActiva.id_mesa.numero_mesa} cargada.`);
       } else {
         showSnack('Esta mesa no tiene comandas activas pendientes.', 'warning');
@@ -274,7 +307,8 @@ const FacturacionPage = () => {
   }, [calcularUtilidades]);
 
   // -------- LOGICA TAB 0: CAJA --------
-  const totalCaja = pedidoActual.reduce((acc, curr) => acc + (curr.precio || 0), 0);
+  const totalProductos = pedidoActual.reduce((acc, curr) => acc + (curr.precio || 0), 0);
+  const totalCaja = totalProductos; // Solo productos, domicilio es informativo
   const prodFiltrados = platos.filter(p => {
     const matchBusqueda = (p.nombre || '').toLowerCase().includes(busquedaProd.toLowerCase());
     const matchCategoria = categoria === 'todas' || p.tipo === categoria;
@@ -370,6 +404,18 @@ const FacturacionPage = () => {
       showSnack('No hay productos en el pedido para facturar.', 'warning');
       return;
     }
+    if (a_domicilio && !direccion_entrega?.trim()) {
+      showSnack('La dirección de entrega es obligatoria para pedidos a domicilio.', 'warning');
+      return;
+    }
+    if (a_domicilio && (!montoDomicilio || montoDomicilio === 0)) {
+      showSnack('El monto del domicilio es obligatorio para pedidos a domicilio.', 'warning');
+      return;
+    }
+    if (a_domicilio && !metodoPagoDomicilio?.trim()) {
+      showSnack('El método de pago del domicilio es obligatorio para pedidos a domicilio.', 'warning');
+      return;
+    }
 
     try {
       const payload = {
@@ -388,7 +434,10 @@ const FacturacionPage = () => {
         }),
         id_comanda: idComandaVinculada,
         a_domicilio: a_domicilio,
+        venta_directa: venta_directa,
         direccion_entrega: direccion_entrega,
+        monto_domicilio: a_domicilio ? montoDomicilio : 0,
+        metodo_pago_domicilio: a_domicilio ? metodoPagoDomicilio : '',
         propinas
       };
 
@@ -396,9 +445,12 @@ const FacturacionPage = () => {
       const res = await facturacionService.create(payload);
       const facturaCreada = res.data;
       
-      // 2. Si vino de una mesa, cerrar la comanda
+      // 2. Si vino de una mesa, cerrar la comanda y guardar monto_domicilio
       if (idComandaVinculada) {
-        await comandaService.update(idComandaVinculada, { facturada: true });
+        await comandaService.update(idComandaVinculada, { 
+          facturada: true,
+          monto_domicilio: a_domicilio ? montoDomicilio : 0
+        });
         showSnack('Factura creada y mesa liberada correctamente.', 'success');
       } else {
         showSnack('Factura procesada con éxito.', 'success');
@@ -410,8 +462,11 @@ const FacturacionPage = () => {
       setIdComandaVinculada(null);
       setMesaSeleccionada(null);
       setA_domicilio(false);
+      setVenta_directa(false);
       setDireccion_entrega('');
       setMetodoPago('');
+      setMontoDomicilio(0);
+      setMetodoPagoDomicilio('');
       setPropinas([]);
       setFormPropina({ metodo_pago: '', monto: '' });
       
@@ -510,6 +565,18 @@ const FacturacionPage = () => {
   const puedeFacturar = sumaPagos >= totalCaja && pagosPartiales.every(p => p.metodo_pago);
 
   const manejarFacturacionDividida = async () => {
+    if (a_domicilio && !direccion_entrega?.trim()) {
+      showSnack('La dirección de entrega es obligatoria para pedidos a domicilio.', 'warning');
+      return;
+    }
+    if (a_domicilio && (!montoDomicilio || montoDomicilio === 0)) {
+      showSnack('El monto del domicilio es obligatorio para pedidos a domicilio.', 'warning');
+      return;
+    }
+    if (a_domicilio && !metodoPagoDomicilio?.trim()) {
+      showSnack('El método de pago del domicilio es obligatorio para pedidos a domicilio.', 'warning');
+      return;
+    }
     if (!puedeFacturar) {
       const razon = sumaPagos < totalCaja 
         ? `Aún faltan $${new Intl.NumberFormat('es-CO').format(Math.max(0, faltaPagar))}`
@@ -522,7 +589,10 @@ const FacturacionPage = () => {
       // Crear factura con detalles de pagos parciales
       const payload = {
         metodo_pago: 'dividido', // Indicador de pago dividido
-        total_pagado: totalCaja,
+        total_pagado: (() => {
+          const sumaProdYDomicilio = pedidoActual.reduce((acc, curr) => acc + (curr.precio || 0), 0) + (a_domicilio && montoDomicilio > 0 ? parseInt(montoDomicilio) : 0);
+          return sumaProdYDomicilio;
+        })(),
         id_cliente: cliente?._id || null,
         detalle_pedido: pedidoActual.map(p => {
           const productoActual = platos.find(x => x._id === p._id);
@@ -536,7 +606,10 @@ const FacturacionPage = () => {
         }),
         id_comanda: idComandaVinculada,
         a_domicilio: a_domicilio,
+        venta_directa: venta_directa,
         direccion_entrega: direccion_entrega,
+        monto_domicilio: a_domicilio ? montoDomicilio : 0,
+        metodo_pago_domicilio: a_domicilio ? metodoPagoDomicilio : '',
         pagos_parciales: pagosPartiales, // Agregar info de pagos divididos
         propinas
       };
@@ -545,7 +618,10 @@ const FacturacionPage = () => {
       const facturaCreada = res.data;
       
       if (idComandaVinculada) {
-        await comandaService.update(idComandaVinculada, { facturada: true });
+        await comandaService.update(idComandaVinculada, { 
+          facturada: true,
+          monto_domicilio: a_domicilio ? montoDomicilio : 0
+        });
         showSnack('Factura creada con cuenta dividida y mesa liberada.', 'success');
       } else {
         showSnack('Factura con cuenta dividida procesada con éxito.', 'success');
@@ -557,8 +633,11 @@ const FacturacionPage = () => {
       setIdComandaVinculada(null);
       setMesaSeleccionada(null);
       setA_domicilio(false);
+      setVenta_directa(false);
       setDireccion_entrega('');
       setMetodoPago('');
+      setMontoDomicilio(0);
+      setMetodoPagoDomicilio('');
       setModoContaDividida(false);
       setPagosPartiales([]);
       setPropinas([]);
@@ -576,172 +655,276 @@ const FacturacionPage = () => {
     <Box sx={{ width: 'calc(100% + 48px)', ml: -3, mr: -3, px: 3 }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={tab} onChange={(e, val) => setTab(val)} textColor="primary" indicatorColor="primary">
-          <Tab icon={<PointOfSaleIcon />} label="Punto de Caja" iconPosition="start" />
           <Tab icon={<TodayIcon />} label="Ventas de Hoy" iconPosition="start" />
           <Tab icon={<AssessmentIcon />} label="Listado General" iconPosition="start" />
           {(usuario?.rol === 'cajero' || usuario?.rol === 'admin') && (
             <Tab icon={<TrendingUpIcon />} label="Utilidad" iconPosition="start" />
           )}
+          <Tab icon={<PointOfSaleIcon />} label="Punto de Caja" iconPosition="start" />
         </Tabs>
       </Box>
 
-      {tab === 0 && (
-        <Box sx={{ width: '100%', display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 2, alignItems: 'flex-start' }}>
+      {tab === 3 && (
+        <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
           
-          {/* ÁREA IZQUIERDA: DATOS Y PRODUCTOS */}
-          <Box sx={{ width: { xs: '100%', lg: '50%' }, flex: { lg: '0 0 calc(50% - 8px)' }, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            
-            {/* CABECERA: CLIENTE Y MESA */}
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
-              <Paper elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
-                <Typography variant="subtitle2" fontWeight={700} color="primary" sx={{ mb: 1.5 }}>DATOS DEL CLIENTE</Typography>
-                {!cliente ? (
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Autocomplete
-                      fullWidth options={clientes}
-                      getOptionLabel={(o) => o ? `${o.nombre} ${o.apellido}` : ''}
-                      value={cliente} onChange={(_, val) => setCliente(val)}
-                      renderInput={(params) => <TextField {...params} label="Buscar cliente..." size="small" />}
-                    />
-                    <Button variant="contained" size="small" onClick={() => setOpenModalCliente(true)} sx={{ bgcolor: '#1a1a2e', minWidth: 40 }}>+</Button>
-                  </Box>
-                ) : (
-                  <Box sx={{ p: 1, bgcolor: 'rgba(233,69,96,0.03)', borderRadius: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body2" fontWeight={700}>{cliente.nombre} {cliente.apellido}</Typography>
-                    <Button variant="text" color="error" size="small" onClick={() => setCliente(null)}>Cambiar</Button>
-                  </Box>
-                )}
-              </Paper>
+          {/* CABECERA: CLIENTE Y MESA */}
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
+            <Paper elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
+              <Typography variant="subtitle2" fontWeight={700} color="primary" sx={{ mb: 1.5 }}>DATOS DEL CLIENTE</Typography>
+              {!cliente ? (
+                <Box sx={{ p: 1, bgcolor: 'rgba(0,0,0,0.03)', borderRadius: 2, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">El cliente viene de la facturación seleccionada</Typography>
+                </Box>
+              ) : (
+                <Box sx={{ p: 1, bgcolor: 'rgba(233,69,96,0.03)', borderRadius: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" fontWeight={700}>
+                    {cliente.nombre} {cliente.apellido}
+                    {cliente.telefono && `, ${cliente.telefono}`}
+                    {cliente.direccion && `, ${cliente.direccion}`}
+                  </Typography>
+                </Box>
+              )}
+            </Paper>
 
-              <Paper elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
-                <Typography variant="subtitle2" fontWeight={700} color="#4caf50" sx={{ mb: 1.5 }}>MESA / COMANDA</Typography>
-                <Autocomplete
-                  fullWidth
-                  options={mesas}
-                  getOptionLabel={(o) => o ? `Mesa #${o.numero_mesa}` : ''}
-                  getOptionDisabled={(o) => !(o.pedido_actual?.ids_productos?.length > 0)}
-                  value={mesas.find(m => m._id === mesaSeleccionada) || null}
-                  onChange={(_, val) => { setMesaSeleccionada(val?._id || null); cargarComandaPorMesa(val?._id); }}
-                  renderOption={(props, option) => {
-                    const tienePedido = option.pedido_actual?.ids_productos?.length > 0;
-                    return (
-                      <Box component="li" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }} {...props}>
-                        <Typography>{`Mesa #${option.numero_mesa}`}</Typography>
-                        <Chip
-                          label={tienePedido ? 'Con pedido' : 'Libre'}
-                          size="small"
-                          color={tienePedido ? 'success' : 'default'}
-                          sx={{ textTransform: 'none', ml: 1 }}
-                        />
-                      </Box>
-                    );
-                  }}
-                  renderInput={(params) => <TextField {...params} label="Elegir mesa..." size="small" />}
-                />
-              </Paper>
-            </Box>
-
-            {/* SECCIÓN DE PRODUCTOS */}
-            <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', minHeight: '75vh', flexGrow: 1 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-                <Typography variant="h5" fontWeight={900} color="#1a1a2e">PRODUCTOS</Typography>
-                <TextField
-                  placeholder="Buscar por nombre..."
-                  variant="outlined" size="small" sx={{ width: { xs: '100%', md: '40%' } }}
-                  value={busquedaProd} onChange={e => setBusquedaProd(e.target.value)}
-                />
-              </Box>
-
-              {/* Filtro por Categorías */}
-              <Box sx={{ display: 'flex', gap: 1, mb: 3, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { height: 4 } }}>
-                {[{ value: 'todas', label: 'Todas' }, ...categorias].map(cat => (
-                  <Chip 
-                    key={cat.value} 
-                    label={cat.label}
-                    onClick={() => setCategoria(cat.value)}
-                    color={categoria === cat.value ? 'primary' : 'default'}
-                    variant={categoria === cat.value ? 'filled' : 'outlined'}
-                    sx={{ textTransform: 'capitalize', fontWeight: 600 }}
+            <Paper elevation={0} sx={{ flex: 1, p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
+              <Typography variant="subtitle2" fontWeight={700} color="#4caf50" sx={{ mb: 1.5 }}>MESA / DESTINO</Typography>
+              {!idComandaVinculada && !mesaSeleccionada && !a_domicilio && !venta_directa ? (
+                <Box sx={{ p: 1, bgcolor: 'rgba(76, 175, 80, 0.08)', borderRadius: 2, textAlign: 'center', border: '1px solid rgba(76, 175, 80, 0.2)' }}>
+                  <Typography variant="body2" color="text.secondary">Viene de la facturación seleccionada</Typography>
+                </Box>
+              ) : !idComandaVinculada ? (
+                <Box sx={{ display: 'flex', gap: 1, flexDirection: 'column' }}>
+                  <Autocomplete
+                    fullWidth
+                    options={mesas}
+                    getOptionLabel={(o) => o ? `Mesa #${o.numero_mesa}` : ''}
+                    getOptionDisabled={(o) => !(o.pedido_actual?.ids_productos?.length > 0)}
+                    value={mesas.find(m => m._id === mesaSeleccionada) || null}
+                    onChange={(_, val) => { 
+                      setMesaSeleccionada(val?._id || null); 
+                      cargarComandaPorMesa(val?._id);
+                      if (val?._id) {
+                        setVenta_directa(false);
+                        setA_domicilio(false);
+                      }
+                    }}
+                    disabled={a_domicilio || !!idComandaVinculada}
+                    renderOption={(props, option) => {
+                      const tienePedido = option.pedido_actual?.ids_productos?.length > 0;
+                      return (
+                        <Box component="li" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }} {...props}>
+                          <Typography>{`Mesa #${option.numero_mesa}`}</Typography>
+                          <Chip
+                            label={tienePedido ? 'Con pedido' : 'Libre'}
+                            size="small"
+                            color={tienePedido ? 'success' : 'default'}
+                            sx={{ textTransform: 'none', ml: 1 }}
+                          />
+                        </Box>
+                      );
+                    }}
+                    renderInput={(params) => <TextField {...params} label="Elegir mesa..." size="small" />}
                   />
-                ))}
-              </Box>
-              
-              <Grid container spacing={1.5}>
-                {prodFiltrados.slice(0, 120).map(prod => (
-                  <Grid item xs={6} sm={4} md={4} lg={3} xl={3} key={prod._id}>
-                    <Box
-                      onClick={() => agregarProducto(prod)}
-                      sx={{ p: 2, border: '1px solid #f0f0f0', borderRadius: 3, textAlign: 'center', bgcolor: '#fff', cursor: 'pointer', transition: 'all 0.2s', '&:hover': { borderColor: '#e94560', transform: 'translateY(-4px)', boxShadow: '0 8px 24px rgba(233,69,96,0.1)' } }}
-                    >
-                      <Typography variant="caption" fontWeight={700} display="block" noWrap sx={{ mb: 1 }}>{prod.nombre}</Typography>
-                      <Typography variant="body2" fontWeight={800} color="success.main" sx={{ bgcolor: '#edfaf0', py: 0.5, borderRadius: 1 }}>
-                        ${new Intl.NumberFormat('es-CO').format(prod.precio)}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={a_domicilio}
+                          onChange={(e) => {
+                            setA_domicilio(e.target.checked);
+                            if (e.target.checked) {
+                              setMesaSeleccionada(null);
+                              setVenta_directa(false);
+                              // Si se activa domicilio y hay cliente con dirección, cargarla
+                              if (cliente && cliente.direccion) {
+                                setDireccion_entrega(cliente.direccion);
+                              }
+                            }
+                          }}
+                          color="primary"
+                          size="small"
+                          disabled={!!idComandaVinculada}
+                        />
+                      }
+                      label="Domicilio"
+                      sx={{ m: 0, flex: 1}}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={venta_directa}
+                          onChange={(e) => {
+                            setVenta_directa(e.target.checked);
+                            if (e.target.checked) {
+                              setMesaSeleccionada(null);
+                              setA_domicilio(false);
+                            }
+                          }}
+                          color="success"
+                          size="small"
+                          disabled={!!idComandaVinculada}
+                        />
+                      }
+                      label="Venta Directa"
+                      sx={{ m: 0, flex: 1 }}
+                    />
+                  </Box>
+                </Box>
+              ) : (
+                <Box sx={{ p: 1, bgcolor: 'rgba(233,69,96,0.03)', borderRadius: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" fontWeight={700}>
+                    {venta_directa ? 'Venta Directa' : a_domicilio ? 'A Domicilio' : mesaSeleccionada ? `Mesa #${mesas.find(m => m._id === mesaSeleccionada)?.numero_mesa || '?'}` : 'Sin asignar'}
+                  </Typography>
+                </Box>
+              )}
             </Paper>
           </Box>
 
-          {/* ÁREA DERECHA: RESUMEN */}
-          <Box sx={{ width: { xs: '100%', lg: '50%' }, flex: { lg: '0 0 calc(50% - 8px)' }, minWidth: 0, position: { lg: 'sticky' }, top: { lg: 84 } }}>
-            <Paper elevation={6} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(233,69,96,0.1)', bgcolor: '#fff', display: 'flex', flexDirection: 'column', height: { xs: 'auto', lg: 'calc(100vh - 180px)' }, minHeight: { xs: 560, lg: 'calc(100vh - 180px)' } }}>
-              <Typography variant="h6" fontWeight={900} sx={{ mb: 2, borderBottom: '3px solid #e94560', pb: 1 }}>RESUMEN</Typography>
+          {/* ÁREA DERECHA: RESUMEN - Ocupando toda la página */}
+          <Box sx={{ width: '100%' }}>
+            <Paper elevation={6} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(233,69,96,0.1)', bgcolor: '#fff', display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 280px)' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3, pb: 2, borderBottom: '3px solid #e94560' }}>
+                <Typography variant="h6" fontWeight={900}>RESUMEN</Typography>
+                {pedidoActual.length === 0 && !idComandaVinculada && (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1.5, 
+                    bgcolor: '#ffc107',
+                    color: '#000',
+                    px: 2.5,
+                    py: 1.2,
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.95rem',
+                    boxShadow: '0 2px 8px rgba(255, 193, 7, 0.4)',
+                    border: '2px solid #ffb300'
+                  }}>
+                    <WarningIcon sx={{ fontSize: '22px', color: '#000' }} />
+                    <Typography sx={{ color: '#000', fontWeight: 700, fontSize: '0.95rem' }}>
+                      Este módulo es solo para montar facturas desde Mesas, Domicilios y Ventas Directas
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
               
-              <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
-                <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', pr: { md: 1 }, borderRight: { md: '1px solid #f0f0f0' } }}>
-                  {pedidoActual.length === 0 ? (
+              <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 3 }}>
+                <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', pr: { lg: 2 }, borderRight: { lg: '1px solid #f0f0f0' } }}>
+                  {pedidoActual.length === 0 && !a_domicilio ? (
                     <Box sx={{ py: 10, textAlign: 'center', opacity: 0.5 }}>
                       <ReceiptLongIcon sx={{ fontSize: 60, mb: 1, color: '#ccc' }} />
-                      <Typography variant="body2">Agregue productos</Typography>
+                      <Typography variant="body2">Ningún pedido cargado</Typography>
                     </Box>
                   ) : (
-                    pedidoActual.map((item, idx) => (
-                      <Box key={item.uid || idx} sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, pb: 1, borderBottom: '1px solid #f9f9f9' }}>
-                        <Box sx={{ maxWidth: '75%' }}>
-                          <Typography variant="body2" fontWeight={700} display="block" sx={{ lineHeight: 1.2 }}>{item.nombre}</Typography>
-                          <Typography variant="caption" color="text.secondary">${new Intl.NumberFormat('es-CO').format(item.precio)}</Typography>
+                    <>
+                      {pedidoActual.map((item, idx) => (
+                        <Box key={item.uid || idx} sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, pb: 1, borderBottom: '1px solid #f9f9f9' }}>
+                          <Box sx={{ maxWidth: '100%' }}>
+                            <Typography variant="body2" fontWeight={700} display="block" sx={{ lineHeight: 1.2 }}>{item.nombre}</Typography>
+                            <Typography variant="caption" color="text.secondary">${new Intl.NumberFormat('es-CO').format(item.precio)}</Typography>
+                          </Box>
                         </Box>
-                        <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)} sx={{ p: 0.5, bgcolor: '#fff0f0' }}>
-                          <DeleteIcon fontSize="inherit" />
-                        </IconButton>
-                      </Box>
-                    ))
+                      ))}
+                      
+                      {/* Línea de Domicilio */}
+                      {a_domicilio && montoDomicilio > 0 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, pb: 1, borderBottom: '1px solid #f9f9f9', bgcolor: 'rgba(76,175,80,0.08)', p: 1, borderRadius: 1 }}>
+                          <Box sx={{ maxWidth: '75%' }}>
+                            <Typography variant="body2" fontWeight={700} display="block" sx={{ lineHeight: 1.2 }}>🚚 Valor Domicilio</Typography>
+                            <Typography variant="caption" color="text.secondary">{metodoPagoDomicilio ? METODOS_PAGO.find(m => m.value === metodoPagoDomicilio)?.label : 'Sin asignar'}</Typography>
+                          </Box>
+                          <Typography variant="body2" fontWeight={700} color="#4caf50">${new Intl.NumberFormat('es-CO').format(montoDomicilio)}</Typography>
+                        </Box>
+                      )}
+                    </>
                   )}
                 </Box>
 
                 <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                 {!modoContaDividida ? (
                   <>
-                    <Button
-                      fullWidth variant="outlined" onClick={abrirDividirCuenta} sx={{ mb: 2, borderRadius: 2, color: '#1a1a2e', borderColor: '#1a1a2e', fontWeight: 700 }}
-                    >
-                      Dividir Cuenta
-                    </Button>
+                    {pedidoActual.length === 0 && (
+                      <Box sx={{ 
+                        p: 2, 
+                        mb: 2,
+                        bgcolor: 'rgba(33, 150, 243, 0.08)',
+                        borderRadius: 2,
+                        border: '1px solid rgba(33, 150, 243, 0.2)',
+                        textAlign: 'center'
+                      }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                          Estas funciones se habilitan cuando vas a facturar
+                        </Typography>
+                      </Box>
+                    )}
+                    {pedidoActual.length > 0 && (
+                      <Button
+                        fullWidth variant="outlined" onClick={abrirDividirCuenta} sx={{ mb: 2, borderRadius: 2, color: '#1a1a2e', borderColor: '#1a1a2e', fontWeight: 700 }}
+                      >
+                        Dividir Cuenta
+                      </Button>
+                    )}
 
-                    <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-                      <InputLabel>Forma de Pago</InputLabel>
-                      <Select value={metodoPago} label="Forma de Pago" onChange={e => setMetodoPago(e.target.value)} sx={{ fontWeight: 700, borderRadius: 2 }}>
-                        {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
-                      </Select>
-                    </FormControl>
+                    {/* Campo Monto Domicilio - Solo si es a domicilio */}
+                    {a_domicilio && (
+                      <Box sx={{ mb: 2, p: 2, borderRadius: 2, bgcolor: 'rgba(76,175,80,0.1)', border: '1px dashed #4caf50' }}>
+                        <Typography variant="caption" fontWeight={700} color="#4caf50" display="block" sx={{ mb: 1 }}>🚚 VALOR DEL DOMICILIO</Typography>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <TextField
+                            size="small"
+                            type="number"
+                            placeholder="0"
+                            value={montoDomicilio === 0 ? '' : montoDomicilio}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setMontoDomicilio(val === '' ? 0 : Math.max(0, parseInt(val) || 0));
+                            }}
+                            InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                            sx={{ flex: 1 }}
+                          />
+                          <FormControl size="small" sx={{ minWidth: 140 }}>
+                            <InputLabel>Pago</InputLabel>
+                            <Select
+                              value={metodoPagoDomicilio}
+                              label="Pago"
+                              onChange={e => setMetodoPagoDomicilio(e.target.value)}
+                              sx={{ borderRadius: 1 }}
+                            >
+                              {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
+                            </Select>
+                          </FormControl>
+                        </Box>
+                      </Box>
+                    )}
 
-                    <Box sx={{ bgcolor: '#1a1a2e', color: '#fff', p: 3, borderRadius: 3, textAlign: 'center', mb: 3, boxShadow: '0 8px 32px rgba(26,26,46,0.3)' }}>
-                      <Typography variant="caption" sx={{ opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1.5, fontSize: '0.6rem' }}>Total Neto</Typography>
-                      <Typography variant="h4" fontWeight={900} color="#e94560">
-                        ${new Intl.NumberFormat('es-CO').format(totalCaja)}
-                      </Typography>
-                    </Box>
+                    {pedidoActual.length > 0 && (
+                      <>
+                        <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                          <InputLabel>Forma de Pago Única</InputLabel>
+                          <Select value={metodoPago} label="Forma de Pago ÚnicaPropina Sugerida" onChange={e => setMetodoPago(e.target.value)} sx={{ fontWeight: 700, borderRadius: 2 }}>
+                            {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
+                          </Select>
+                        </FormControl>
 
-                    {renderPropinas()}
+                        <Box sx={{ bgcolor: '#1a1a2e', color: '#fff', p: 3, borderRadius: 3, textAlign: 'center', mb: 3, boxShadow: '0 8px 32px rgba(26,26,46,0.3)' }}>
+                          <Typography variant="caption" sx={{ opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1.5, fontSize: '0.6rem' }}>Total Neto</Typography>
+                          <Typography variant="h4" fontWeight={900} color="#e94560">
+                            ${new Intl.NumberFormat('es-CO').format(totalCaja + totalPropinas)}
+                          </Typography>
+                        </Box>
 
-                    <Button
-                      fullWidth variant="contained" onClick={manejarFacturacion} disabled={pedidoActual.length === 0}
-                      sx={{ mt: 'auto', py: 2, background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 3, fontWeight: 800, fontSize: '1rem', letterSpacing: 1, boxShadow: '0 4px 15px rgba(233,69,96,0.4)' }}
-                    >
-                      COBRAR AHORA
-                    </Button>
+                        {renderPropinas()}
+                      </>
+                    )}
+
+                    {pedidoActual.length > 0 && (
+                      <Button
+                        fullWidth variant="contained" onClick={manejarFacturacion} disabled={pedidoActual.length === 0}
+                        sx={{ mt: 'auto', py: 2, background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 3, fontWeight: 800, fontSize: '1rem', letterSpacing: 1, boxShadow: '0 4px 15px rgba(233,69,96,0.4)' }}
+                      >
+                        COBRAR AHORA
+                      </Button>
+                    )}
                   </>
                 ) : (
                   <>
@@ -772,6 +955,38 @@ const FacturacionPage = () => {
                           />
                         </Box>
                       ))}
+
+                      {/* Campo Monto Domicilio en Modo Dividido */}
+                      {a_domicilio && (
+                        <Box sx={{ mb: 2, p: 2, borderRadius: 1, bgcolor: 'rgba(76,175,80,0.08)', border: '1px dashed #4caf50' }}>
+                          <Typography variant="caption" fontWeight={700} color="#4caf50" display="block" sx={{ mb: 1 }}>🚚 VALOR DEL DOMICILIO</Typography>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <TextField
+                              size="small"
+                              type="number"
+                              placeholder="0"
+                              value={montoDomicilio === 0 ? '' : montoDomicilio}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setMontoDomicilio(val === '' ? 0 : Math.max(0, parseInt(val) || 0));
+                              }}
+                              InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                              sx={{ flex: 1 }}
+                            />
+                            <FormControl size="small" sx={{ minWidth: 140 }}>
+                              <InputLabel>Pago</InputLabel>
+                              <Select
+                                value={metodoPagoDomicilio}
+                                label="Pago"
+                                onChange={e => setMetodoPagoDomicilio(e.target.value)}
+                                sx={{ borderRadius: 1 }}
+                              >
+                                {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
+                              </Select>
+                            </FormControl>
+                          </Box>
+                        </Box>
+                      )}
 
                       <Box sx={{ pt: 2, borderTop: '2px solid #eee', mt: 2 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -814,7 +1029,7 @@ const FacturacionPage = () => {
       )}
 
       {/* TAB 1: VENTAS DE HOY */}
-      {tab === 1 && (
+      {tab === 0 && (
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={4}>
@@ -824,6 +1039,7 @@ const FacturacionPage = () => {
                   <MenuItem value="todos">Todos</MenuItem>
                   <MenuItem value="mesa">Mesas</MenuItem>
                   <MenuItem value="domicilio">A Domicilio</MenuItem>
+                  <MenuItem value="venta_directa">Venta Directa</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -847,8 +1063,9 @@ const FacturacionPage = () => {
               
               if (facLocal !== hoy) return false;
               
-              if (filtroDestino === 'mesa' && f.a_domicilio) return false;
-              if (filtroDestino === 'domicilio' && !f.a_domicilio) return false;
+              if (filtroDestino === 'mesa' && (f.a_domicilio || f.venta_directa)) return false;
+              if (filtroDestino === 'domicilio' && (!f.a_domicilio || f.venta_directa)) return false;
+              if (filtroDestino === 'venta_directa' && !f.venta_directa) return false;
               
               return true;
             })}
@@ -859,7 +1076,7 @@ const FacturacionPage = () => {
       )}
 
       {/* TAB 2: LISTADO GENERAL Y FILTROS */}
-      {tab === 2 && (
+      {tab === 1 && (
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid item xs={12} md={3}>
@@ -915,6 +1132,7 @@ const FacturacionPage = () => {
                   <MenuItem value="todos">Todos</MenuItem>
                   <MenuItem value="mesa">Mesas</MenuItem>
                   <MenuItem value="domicilio">A Domicilio</MenuItem>
+                  <MenuItem value="venta_directa">Venta Directa</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -957,10 +1175,13 @@ const FacturacionPage = () => {
                 match = propinasFactura.some(propina => propina.metodo_pago === filtroMetodoPropina);
               }
               if (match && filtroDestino === 'mesa') {
-                match = !f.a_domicilio;
+                match = !f.a_domicilio && !f.venta_directa;
               }
               if (match && filtroDestino === 'domicilio') {
-                match = f.a_domicilio;
+                match = f.a_domicilio && !f.venta_directa;
+              }
+              if (match && filtroDestino === 'venta_directa') {
+                match = f.venta_directa;
               }
               return match;
             })}
@@ -971,7 +1192,7 @@ const FacturacionPage = () => {
       )}
 
       {/* TAB 3: ANÁLISIS DE UTILIDAD */}
-      {tab === 3 && (usuario?.rol === 'cajero' || usuario?.rol === 'admin') && (
+      {tab === 2 && (usuario?.rol === 'cajero' || usuario?.rol === 'admin') && (
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid item xs={12} md={2}>
@@ -1147,6 +1368,14 @@ const FacturacionPage = () => {
               {facturaFinal.id_cliente?.telefono && (
                 <Typography fontSize="11px"><strong>Teléfono:</strong> {facturaFinal.id_cliente.telefono}</Typography>
               )}
+              {facturaFinal.monto_domicilio > 0 && (
+                <Box sx={{ mt: 0.5 }}>
+                  <Typography fontSize="11px"><strong>Valor Domicilio:</strong> {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.monto_domicilio)}</Typography>
+                  {facturaFinal.metodo_pago_domicilio && (
+                    <Typography fontSize="11px"><strong>Forma de Pago Domicilio:</strong> {facturaFinal.metodo_pago_domicilio}</Typography>
+                  )}
+                </Box>
+              )}
             </Box>
           )}
 
@@ -1170,45 +1399,44 @@ const FacturacionPage = () => {
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
-          <Box display="flex" justifyContent="space-between" mb={1} fontWeight="bold">
-            <Typography fontSize="14px" fontWeight="bold">TOTAL PAGADO</Typography>
-            <Typography fontSize="14px" fontWeight="bold">
-              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.total_pagado)}
+          <Box display="flex" justifyContent="space-between" mb={1}>
+            <Typography fontSize="12px">Subtotal productos:</Typography>
+            <Typography fontSize="12px">
+              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.detalle_pedido?.reduce((sum, item) => sum + (item.precio * item.cantidad), 0) || 0)}
             </Typography>
           </Box>
-          <Box mb={2}>
-            <Typography fontSize="12px" fontWeight="bold">PAGOS</Typography>
-            {(facturaFinal.pagos_parciales?.length
-              ? facturaFinal.pagos_parciales
-              : [{ metodo_pago: facturaFinal.metodo_pago, monto: facturaFinal.total_pagado }]
-            ).map((pago, idx) => (
-              <Box key={`${pago.metodo_pago}-${idx}`} display="flex" justifyContent="space-between">
-                <Typography fontSize="12px" textTransform="uppercase">{pago.metodo_pago || 'Sin método'}</Typography>
-                <Typography fontSize="12px">
-                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(pago.monto || 0)}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
+
           {facturaFinal.propinas?.length > 0 && (
-            <Box mb={2}>
-              <Typography fontSize="12px" fontWeight="bold">PROPINA</Typography>
-              {facturaFinal.propinas.map((propina, idx) => (
-                <Box key={idx} display="flex" justifyContent="space-between">
-                  <Typography fontSize="12px" textTransform="uppercase">{propina.metodo_pago || 'Sin método'}</Typography>
+            <>
+              <Box mt={1}>
+                <Typography fontSize="12px" fontWeight="bold">Propina</Typography>
+                {facturaFinal.propinas.map((propina, idx) => (
+                  <Box key={idx} display="flex" justifyContent="space-between">
+                    <Typography fontSize="12px">{propina.metodo_pago || 'Sin método'}</Typography>
+                    <Typography fontSize="12px">
+                      {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(propina.monto || 0)}
+                    </Typography>
+                  </Box>
+                ))}
+                <Box display="flex" justifyContent="space-between" mt={0.5} pt={0.5} borderTop="1px dotted #000">
+                  <Typography fontSize="12px">Total propina</Typography>
                   <Typography fontSize="12px">
-                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(propina.monto || 0)}
+                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.propinas.reduce((sum, propina) => sum + (propina.monto || 0), 0))}
                   </Typography>
                 </Box>
-              ))}
-              <Box display="flex" justifyContent="space-between" mt={0.5} pt={0.5} borderTop="1px dotted #000">
-                <Typography fontSize="12px" fontWeight="bold">TOTAL PROPINA</Typography>
-                <Typography fontSize="12px" fontWeight="bold">
-                  {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.propinas.reduce((sum, propina) => sum + (propina.monto || 0), 0))}
-                </Typography>
               </Box>
-            </Box>
+            </>
           )}
+
+          <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
+          <Box display="flex" justifyContent="space-between" mb={2} p={1} sx={{ bgcolor: '#f5f5f5' }}>
+            <Typography fontSize="14px" fontWeight="bold">TOTAL FINAL</Typography>
+            <Typography fontSize="14px" fontWeight="bold">
+              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(
+                facturaFinal.total_pagado + (facturaFinal.propinas?.reduce((sum, propina) => sum + (propina.monto || 0), 0) || 0)
+              )}
+            </Typography>
+          </Box>
 
           <Typography textAlign="center" fontSize="12px" fontWeight="bold" mt={3}>
             ¡GRACIAS POR SU COMPRA!
@@ -1394,10 +1622,12 @@ const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {f.a_domicilio ? (
-                      <Chip label="PEDIDO A DOMICILIO" color="warning" variant="outlined" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }} />
+                    {f.venta_directa ? (
+                      <Chip label="🏪 VENTA DIRECTA" color="success" variant="outlined" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }} />
+                    ) : f.a_domicilio ? (
+                      <Chip label="🚚 PEDIDO A DOMICILIO" color="warning" variant="outlined" sx={{ fontWeight: 'bold', textTransform: 'uppercase' }} />
                     ) : f.id_comanda?.id_mesa ? (
-                      <Chip label={`MESA #${f.id_comanda.id_mesa.numero_mesa}`} color="info" variant="outlined" sx={{ fontWeight: 'bold' }} />
+                      <Chip label={`🪑 MESA #${f.id_comanda.id_mesa.numero_mesa}`} color="info" variant="outlined" sx={{ fontWeight: 'bold' }} />
                     ) : (
                       <Typography variant="caption" color="text.secondary">—</Typography>
                     )}
