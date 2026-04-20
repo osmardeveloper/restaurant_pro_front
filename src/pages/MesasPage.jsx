@@ -547,7 +547,7 @@ const MesasPage = () => {
 
       {/* Propina Sugerida para Imprimir Cuenta */}
       <Dialog open={openPropina} onClose={() => { setOpenPropina(false); setValorPropina(''); }} PaperProps={{ sx: { borderRadius: 3, minWidth: 400 } }}>
-        <DialogTitle sx={{ fontWeight: 700 }}>Propina Sugerida</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>Propina</DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <FormControl fullWidth size="small" sx={{ mb: 2, mt: 2 }}>
             <InputLabel>Tipo de Propina</InputLabel>
@@ -647,7 +647,7 @@ const MesasPage = () => {
           {/* PROPINA SUGERIDA */}
           <Box sx={{ border: '1px dashed #000', padding: '2mm', margin: '2mm 0', textAlign: 'center', backgroundColor: '#fafafa' }}>
             <Typography fontWeight="bold" fontSize="11px" sx={{ margin: '1mm 0' }}>
-              PROPINA SUGERIDA {reciboDatos.tipoPropina === 'porcentaje' ? `(${reciboDatos.valorPropina}%)` : ''}
+              PROPINA {reciboDatos.tipoPropina === 'porcentaje' ? `(${reciboDatos.valorPropina}%)` : ''}
             </Typography>
             <Typography fontWeight="bold" fontSize="14px" sx={{ margin: '1.5mm 0' }}>
               ${reciboDatos.montoPropina.toLocaleString('es-CO')}

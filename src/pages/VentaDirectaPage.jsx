@@ -478,7 +478,7 @@ const VentaDirectaPage = () => {
 
       {/* Modal Propina */}
       <Dialog open={openPropina} onClose={() => setOpenPropina(false)}>
-        <DialogTitle fontWeight={700}>Propina Sugerida</DialogTitle>
+        <DialogTitle fontWeight={700}>Propina</DialogTitle>
         <DialogContent sx={{ minWidth: 350, py: 2 }}>
           <FormControl fullWidth size="small" sx={{ mb: 2, mt: 2 }}>
             <InputLabel>Tipo</InputLabel>
@@ -559,7 +559,7 @@ const VentaDirectaPage = () => {
 
           {/* PROPINA SUGERIDA - SUTIL */}
           <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography fontSize="8px" sx={{ color: '#666', fontStyle: 'italic', opacity: 0.7 }}>propina sugerida</Typography>
+            <Typography fontSize="8px" sx={{ color: '#666', fontStyle: 'italic', opacity: 0.7 }}>propina</Typography>
             <Typography fontSize="9px" sx={{ color: '#666' }}>${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
           </Box>
 

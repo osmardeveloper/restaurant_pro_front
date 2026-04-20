@@ -476,7 +476,7 @@ const DomiciliosPage = () => {
 
       {/* Propina Sugerida para Imprimir Cuenta */}
       <Dialog open={openPropina} onClose={() => { setOpenPropina(false); setValorPropina(''); }} PaperProps={{ sx: { borderRadius: 3, minWidth: 400 } }}>
-        <DialogTitle sx={{ fontWeight: 700 }}>Propina Sugerida</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>Propina</DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <FormControl fullWidth size="small" sx={{ mb: 2, mt: 2 }}>
             <InputLabel>Tipo de Propina</InputLabel>
@@ -575,7 +575,7 @@ const DomiciliosPage = () => {
 
           {/* PROPINA SUGERIDA - SUTIL */}
           <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography fontSize="8px" sx={{ color: '#666', fontStyle: 'italic', opacity: 0.7 }}>propina sugerida</Typography>
+            <Typography fontSize="8px" sx={{ color: '#666', fontStyle: 'italic', opacity: 0.7 }}>propina</Typography>
             <Typography fontSize="9px" sx={{ color: '#666' }}>${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
           </Box>
 

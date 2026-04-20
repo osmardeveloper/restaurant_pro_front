@@ -8,7 +8,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, IconButton, Tooltip, Dialog,
   DialogTitle, DialogContent, DialogActions, Button, Grid,
-  TextField, InputAdornment, Link
+  TextField, InputAdornment, Link, Select, MenuItem, FormControl, InputLabel, Divider
 } from '@mui/material';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import EditIcon from '@mui/icons-material/Edit';
@@ -51,6 +51,13 @@ const ComandasPage = () => {
   const [modalFacturaOpen, setModalFacturaOpen] = useState(false);
   const [facturaParaMostrar, setFacturaParaMostrar] = useState(null);
   const [loadingFactura, setLoadingFactura] = useState(false);
+
+  // Modal Propina Sugerida para Imprimir Cuenta
+  const [openPropina, setOpenPropina] = useState(false);
+  const [comandaPropina, setComandaPropina] = useState(null);
+  const [tipoPropina, setTipoPropina] = useState('porcentaje'); // 'porcentaje' o 'monto'
+  const [valorPropina, setValorPropina] = useState('');
+  const [reciboDatos, setReciboDatos] = useState(null); // Estado para los datos del recibo
 
   const fetchDatos = useCallback(async () => {
     setLoading(true);
@@ -102,6 +109,51 @@ const ComandasPage = () => {
     } finally {
       setLoadingFactura(false);
     }
+  };
+
+  const abrirModalPropina = (comanda) => {
+    setComandaPropina(comanda);
+    setTipoPropina('porcentaje');
+    setValorPropina('');
+    setOpenPropina(true);
+  };
+
+  const imprimirCuentaConPropina = () => {
+    if (!valorPropina || isNaN(Number(valorPropina))) {
+      setSnack({ open: true, msg: 'Ingresa un valor válido de propina.', severity: 'warning' });
+      return;
+    }
+
+    const totalPedido = comandaPropina.ids_productos.reduce((acc, p) => acc + (p.precio || 0), 0);
+    const montoPropina = tipoPropina === 'porcentaje' 
+      ? (totalPedido * Number(valorPropina)) / 100 
+      : Number(valorPropina);
+
+    // Actualizar estado con los datos del recibo
+    setReciboDatos({
+      mesa: comandaPropina.id_mesa?.numero_mesa || 'N/A',
+      cliente: comandaPropina.id_cliente 
+        ? `${comandaPropina.id_cliente.nombre} ${comandaPropina.id_cliente.apellido}` 
+        : 'Consumidor Final',
+      productos: comandaPropina.ids_productos,
+      totalPedido,
+      montoPropina,
+      tipoPropina,
+      valorPropina,
+      fecha: new Date().toLocaleString('es-CO')
+    });
+
+    setOpenPropina(false);
+    setValorPropina('');
+    
+    // Dar tiempo a React de renderizar antes de imprimir
+    setTimeout(() => {
+      window.print();
+      // Limpiar datos después de imprimir
+      setTimeout(() => {
+        setReciboDatos(null);
+      }, 1000);
+    }, 300);
   };
 
   const agregarProducto = (prod) => {
@@ -290,7 +342,8 @@ const ComandasPage = () => {
                     <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Productos</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Fecha / Hora</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 700, textAlign: 'center' }}>Facturada</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700, textAlign: 'center' }}>Imprimir Comanda</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 700, textAlign: 'center' }}>Comanda</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 700, textAlign: 'center' }}>Cuenta</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 700, textAlign: 'center' }}>Editar</TableCell>
                   </TableRow>
                 </TableHead>
@@ -366,6 +419,15 @@ const ComandasPage = () => {
                                 <PrintIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
+                          </TableCell>
+                          <TableCell align="center">
+                            {(comanda.ids_productos || []).length > 0 && (
+                              <Tooltip title="Imprimir Cuenta con Propina">
+                                <IconButton size="small" onClick={() => abrirModalPropina(comanda)} sx={{ color: '#e94560' }}>
+                                  <PrintIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
                           </TableCell>
                           <TableCell align="center">
                             {!comanda.facturada ? (
@@ -605,6 +667,130 @@ const ComandasPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Modal Propina Sugerida para Imprimir Cuenta */}
+      <Dialog open={openPropina} onClose={() => { setOpenPropina(false); setValorPropina(''); }} PaperProps={{ sx: { borderRadius: 3, minWidth: 400 } }}>
+        <DialogTitle sx={{ fontWeight: 700 }}>Propina</DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <FormControl fullWidth size="small" sx={{ mb: 2, mt: 2 }}>
+            <InputLabel>Tipo de Propina</InputLabel>
+            <Select value={tipoPropina} label="Tipo de Propina" onChange={e => setTipoPropina(e.target.value)}>
+              <MenuItem value="porcentaje">Porcentaje (%)</MenuItem>
+              <MenuItem value="monto">Monto Fijo ($)</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField 
+            fullWidth
+            label={tipoPropina === 'porcentaje' ? 'Porcentaje (%)' : 'Monto ($)'}
+            type="number"
+            size="small"
+            value={valorPropina}
+            onChange={e => setValorPropina(e.target.value)}
+            placeholder={tipoPropina === 'porcentaje' ? '10' : '5000'}
+            autoFocus
+            onKeyPress={(e) => e.key === 'Enter' && imprimirCuentaConPropina()}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+          <Button onClick={() => { setOpenPropina(false); setValorPropina(''); }} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button onClick={imprimirCuentaConPropina} variant="contained" sx={{ borderRadius: 2, background: '#1a1a2e' }}>Imprimir</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Contenedor de Impresión - Recibo de Cuenta con Propina */}
+      {reciboDatos && (
+        <Box className="print-only">
+          <style>
+            {`
+              .print-only { display: none; }
+              @media print {
+                html, body, #root { 
+                  height: auto !important; 
+                  min-height: 0 !important; 
+                  margin: 0 !important; 
+                  padding: 0 !important; 
+                  overflow: hidden !important; 
+                  background: white !important;
+                }
+                body * { visibility: hidden !important; }
+                .print-only, .print-only * { visibility: visible !important; }
+                .print-only { 
+                   display: block !important; 
+                   position: absolute !important; 
+                   left: 0 !important; 
+                   top: 0 !important; 
+                   width: 80mm !important; 
+                   padding: 3mm !important;
+                   font-family: 'Courier New', monospace !important; 
+                   font-size: 11px !important; 
+                   color: #000 !important; 
+                   box-sizing: border-box !important; 
+                }
+                @page { size: 80mm auto; margin: 0; }
+              }
+            `}
+          </style>
+
+          {/* ENCABEZADO */}
+          <Box sx={{ textAlign: 'center', marginBottom: '2mm', fontWeight: 'bold' }}>
+            <Typography fontWeight="bold" fontSize="14px">LA PERLA RESTAURANTE BQ</Typography>
+            <Typography fontSize="10px">Dir.: cra 62 # 72-28</Typography>
+            <Typography fontSize="10px">Telf.: 315 075 2214</Typography>
+            <Typography fontSize="10px">{reciboDatos.fecha}</Typography>
+            <Typography fontSize="10px" fontWeight="bold">Recibo de Cuenta - MESA</Typography>
+          </Box>
+
+          <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
+
+          {/* INFORMACIÓN MESA */}
+          <Box sx={{ margin: '1.5mm 0', padding: '1.5mm', backgroundColor: '#f5f5f5', borderRadius: '2mm' }}>
+            <Typography fontSize="10px" fontWeight="bold">MESA #{reciboDatos.mesa}</Typography>
+            <Typography fontSize="10px">Cliente: {reciboDatos.cliente}</Typography>
+          </Box>
+
+          <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
+
+          {/* PRODUCTOS */}
+          <Box sx={{ margin: '1.5mm 0' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderBottom: '1px solid #000', padding: '0.5mm 0', marginBottom: '1mm', fontWeight: 'bold' }}>
+              <span>DESCRIPCIÓN</span>
+              <span>TOTAL</span>
+            </Box>
+            {(reciboDatos.productos || []).map((item, idx) => (
+              <Box key={idx} sx={{ display: 'flex', margin: '0.3mm 0', fontSize: '11px' }}>
+                <span style={{ flex: 1 }}>1x {(item.nombre || 'Producto').substring(0, 35)}</span>
+                <span style={{ flexGrow: 1, borderBottom: '1px dotted #000', margin: '0 1mm' }}></span>
+                <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '11px', marginLeft: '2mm' }}>${(item.precio || 0).toLocaleString('es-CO')}</span>
+              </Box>
+            ))}
+          </Box>
+
+          <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
+
+          {/* PROPINA SUGERIDA */}
+          <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography fontSize="8px" sx={{ color: '#666', fontStyle: 'italic', opacity: 0.7 }}>propina</Typography>
+            <Typography fontSize="9px" sx={{ color: '#666' }}>${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
+          </Box>
+
+          <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
+
+          {/* TOTAL */}
+          <Box sx={{ margin: '1.5mm 0' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
+              <span>TOTAL</span>
+              <span>${reciboDatos.totalPedido.toLocaleString('es-CO')}</span>
+            </Box>
+          </Box>
+
+          <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
+
+          {/* FOOTER */}
+          <Typography sx={{ textAlign: 'center', fontWeight: 'bold', marginTop: '2mm', fontSize: '11px' }}>
+            ¡GRACIAS POR SU COMPRA!
+          </Typography>
+        </Box>
+      )}
 
       {/* COMPONENTE DE IMPRESIÓN (OCULTO) */}
       {comandaParaImprimir && (
