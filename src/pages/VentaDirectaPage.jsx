@@ -167,73 +167,36 @@ const VentaDirectaPage = () => {
     setOpenPropina(true);
   };
 
-  const imprimirCuentaConPropina = async () => {
+  const imprimirCuentaConPropina = () => {
     if (!valorPropina || isNaN(Number(valorPropina))) {
       showSnack('Ingresa un valor válido de propina.', 'warning');
       return;
     }
 
-    try {
-      const totalPedido = comandaPropina.ids_productos.reduce((acc, p) => acc + (p.precio || 0), 0);
-      const montoPropina = tipoPropina === 'porcentaje' 
-        ? (totalPedido * Number(valorPropina)) / 100 
-        : Number(valorPropina);
+    const totalPedido = comandaPropina.ids_productos.reduce((acc, p) => acc + (p.precio || 0), 0);
+    const montoPropina = tipoPropina === 'porcentaje' 
+      ? (totalPedido * Number(valorPropina)) / 100 
+      : Number(valorPropina);
 
-      // Crear payload de facturación igual a FacturacionPage
-      const payload = {
-        metodo_pago: 'EFECTIVO',
-        total_pagado: totalPedido + montoPropina,
-        id_cliente: comandaPropina.id_cliente?._id || null,
-        detalle_pedido: comandaPropina.ids_productos.map(p => ({
-          id_producto: p._id,
-          nombre: p.nombre,
-          precio: p.precio,
-          costo: p.costo || null,
-          cantidad: 1
-        })),
-        id_comanda: comandaPropina._id,
-        a_domicilio: false,
-        venta_directa: true,
-        direccion_entrega: '',
-        monto_domicilio: 0,
-        propinas: [{ 
-          tipo: tipoPropina,
-          valor: Number(valorPropina),
-          monto: montoPropina 
-        }]
-      };
+    // Preparar datos para imprimir recibo (sin crear factura)
+    setReciboDatos({
+      productos: comandaPropina.ids_productos,
+      totalPedido,
+      montoPropina,
+      tipoPropina,
+      valorPropina,
+      fecha: new Date().toLocaleString('es-CO')
+    });
 
-      // 1. Crear la Facturación
-      await facturacionService.create(payload);
-
-      // 2. Marcar comanda como facturada
-      await comandaService.update(comandaPropina._id, { facturada: true });
-
-      // 3. Preparar datos para imprimir recibo
-      setReciboDatos({
-        productos: comandaPropina.ids_productos,
-        totalPedido,
-        montoPropina,
-        tipoPropina,
-        valorPropina,
-        fecha: new Date().toLocaleString('es-CO')
-      });
-
-      setOpenPropina(false);
-      setValorPropina('');
-      
+    setOpenPropina(false);
+    setValorPropina('');
+    
+    setTimeout(() => {
+      window.print();
       setTimeout(() => {
-        window.print();
-        setTimeout(() => {
-          setReciboDatos(null);
-          fetchData(); // Recargar lista de ventas directas
-        }, 1000);
-      }, 300);
-
-      showSnack('Factura guardada y lista para imprimir.', 'success');
-    } catch (err) {
-      showSnack(err.response?.data?.message || 'Error al procesar la factura.', 'error');
-    }
+        setReciboDatos(null);
+      }, 1000);
+    }, 300);
   };
 
   const imprimirComanda = (comanda) => {
@@ -557,10 +520,10 @@ const VentaDirectaPage = () => {
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
-          {/* PROPINA SUGERIDA - SUTIL */}
+          {/* PROPINA */}
           <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography fontSize="8px" sx={{ color: '#666', fontStyle: 'italic', opacity: 0.7 }}>propina</Typography>
-            <Typography fontSize="9px" sx={{ color: '#666' }}>${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
+            <Typography fontSize="11px">Propina</Typography>
+            <Typography fontSize="11px">${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
@@ -569,7 +532,7 @@ const VentaDirectaPage = () => {
           <Box sx={{ margin: '1.5mm 0' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
               <span>TOTAL</span>
-              <span>${reciboDatos.totalPedido.toLocaleString('es-CO')}</span>
+              <span>${(reciboDatos.totalPedido + reciboDatos.montoPropina).toLocaleString('es-CO')}</span>
             </Box>
           </Box>
 

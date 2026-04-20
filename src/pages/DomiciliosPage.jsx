@@ -573,10 +573,10 @@ const DomiciliosPage = () => {
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
-          {/* PROPINA SUGERIDA - SUTIL */}
+          {/* PROPINA */}
           <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography fontSize="8px" sx={{ color: '#666', fontStyle: 'italic', opacity: 0.7 }}>propina</Typography>
-            <Typography fontSize="9px" sx={{ color: '#666' }}>${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
+            <Typography fontSize="11px">Propina</Typography>
+            <Typography fontSize="11px">${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
@@ -585,7 +585,7 @@ const DomiciliosPage = () => {
           <Box sx={{ margin: '1.5mm 0' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
               <span>TOTAL</span>
-              <span>${reciboDatos.totalPedido.toLocaleString('es-CO')}</span>
+              <span>${(reciboDatos.totalPedido + reciboDatos.montoPropina).toLocaleString('es-CO')}</span>
             </Box>
           </Box>
 
