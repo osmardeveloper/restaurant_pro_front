@@ -110,7 +110,7 @@ const FacturacionPage = () => {
   const [pagosPartiales, setPagosPartiales] = useState([]);
   const [modoContaDividida, setModoContaDividida] = useState(false);
   const [propinas, setPropinas] = useState([]);
-  const [formPropina, setFormPropina] = useState({ metodo_pago: '', monto: '' });
+  const [formPropina, setFormPropina] = useState({ metodo_pago: '', monto: '', porcentaje: '' });
   
   // Estados para Domicilio
   const [montoDomicilio, setMontoDomicilio] = useState(0);
@@ -320,70 +320,114 @@ const FacturacionPage = () => {
   const totalPropinas = propinas.reduce((sum, propina) => sum + (propina.monto || 0), 0);
 
   const agregarPropina = () => {
-    const monto = Number(formPropina.monto || 0);
+    let monto = Number(formPropina.monto || 0);
+    
+    // Si se ingresa porcentaje, calcular el monto
+    if (formPropina.porcentaje) {
+      const porcentaje = Number(formPropina.porcentaje || 0);
+      if (porcentaje < 0 || porcentaje > 100) {
+        showSnack('El porcentaje debe estar entre 0 y 100.', 'warning');
+        return;
+      }
+      monto = (totalCaja * porcentaje) / 100;
+    }
+    
     if (!formPropina.metodo_pago || monto <= 0) {
-      showSnack('Selecciona método y monto de propina mayor a cero.', 'warning');
+      showSnack('Selecciona método y ingresa monto o porcentaje mayor a cero.', 'warning');
       return;
     }
 
     setPropinas(prev => [...prev, { metodo_pago: formPropina.metodo_pago, monto }]);
-    setFormPropina({ metodo_pago: '', monto: '' });
+    setFormPropina({ metodo_pago: '', monto: '', porcentaje: '' });
   };
 
   const quitarPropina = (index) => {
     setPropinas(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  const renderPropinas = () => (
-    <Box sx={{ mb: 2, p: 2, borderRadius: 2, bgcolor: '#fffaf0', border: '1px solid #ffcc80' }}>
-      <Typography variant="subtitle2" fontWeight={800} color="#ef6c00" sx={{ mb: 1.5 }}>
-        Propina
-      </Typography>
-      <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-        <FormControl size="small" sx={{ flex: 1 }}>
-          <InputLabel>Método</InputLabel>
-          <Select
-            value={formPropina.metodo_pago}
-            label="Método"
-            onChange={e => setFormPropina(prev => ({ ...prev, metodo_pago: e.target.value }))}
-            sx={{ borderRadius: 1 }}
-          >
-            {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
-          </Select>
-        </FormControl>
-        <TextField
-          size="small"
-          label="Monto"
-          type="number"
-          value={formPropina.monto}
-          onChange={e => setFormPropina(prev => ({ ...prev, monto: e.target.value }))}
-          InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
-          sx={{ width: 120 }}
-        />
+  const renderPropinas = () => {
+    // Calcular monto cuando hay porcentaje
+    const montoCalculado = formPropina.porcentaje 
+      ? (totalCaja * Number(formPropina.porcentaje)) / 100 
+      : Number(formPropina.monto);
+
+    return (
+      <Box sx={{ mb: 2, p: 2, borderRadius: 2, bgcolor: '#fffaf0', border: '1px solid #ffcc80' }}>
+        <Typography variant="subtitle2" fontWeight={800} color="#ef6c00" sx={{ mb: 1.5 }}>
+          Propina
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+          <FormControl size="small" sx={{ flex: 1, minWidth: 100 }}>
+            <InputLabel>Método</InputLabel>
+            <Select
+              value={formPropina.metodo_pago}
+              label="Método"
+              onChange={e => setFormPropina(prev => ({ ...prev, metodo_pago: e.target.value }))}
+              sx={{ borderRadius: 1 }}
+            >
+              {METODOS_PAGO.map(m => <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <TextField
+            size="small"
+            label="Porcentaje"
+            type="number"
+            value={formPropina.porcentaje}
+            onChange={e => setFormPropina(prev => ({ ...prev, porcentaje: e.target.value, monto: '' }))}
+            InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+            sx={{ flex: 1, minWidth: 100 }}
+            placeholder="0-100"
+          />
+          <TextField
+            size="small"
+            label="Monto"
+            type="number"
+            value={formPropina.porcentaje ? montoCalculado.toFixed(0) : formPropina.monto}
+            onChange={e => {
+              if (!formPropina.porcentaje) {
+                setFormPropina(prev => ({ ...prev, monto: e.target.value }));
+              }
+            }}
+            InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+            sx={{ flex: 1, minWidth: 100 }}
+            disabled={!!formPropina.porcentaje}
+            title={formPropina.porcentaje ? 'Se calcula automáticamente' : ''}
+          />
+        </Box>
+        {formPropina.porcentaje && montoCalculado > 0 && (
+          <Box sx={{ p: 1, mb: 1, bgcolor: '#fff9e6', border: '1px solid #ffe0b2', borderRadius: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="caption" fontWeight={700} color="#666">
+              Monto calculado: {formPropina.porcentaje}% de ${new Intl.NumberFormat('es-CO').format(totalCaja)}
+            </Typography>
+            <Typography variant="caption" fontWeight={900} color="#ef6c00">
+              ${new Intl.NumberFormat('es-CO').format(Math.round(montoCalculado))}
+            </Typography>
+          </Box>
+        )}
+        <Button fullWidth variant="outlined" onClick={agregarPropina} sx={{ mb: propinas.length ? 1.5 : 0, borderRadius: 2, borderColor: '#ef6c00', color: '#ef6c00', fontWeight: 700 }}>
+          Agregar propina
+        </Button>
+        {propinas.map((propina, idx) => (
+          <Box key={`${propina.metodo_pago}-${idx}`} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, py: 0.5 }}>
+            <Typography variant="caption" fontWeight={700}>
+              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(propina.monto)} {propina.metodo_pago}
+            </Typography>
+            <IconButton size="small" color="error" onClick={() => quitarPropina(idx)} sx={{ p: 0.25 }}>
+              <DeleteIcon fontSize="inherit" />
+            </IconButton>
+          </Box>
+        ))}
+        {propinas.length > 0 && (
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #ffcc80', mt: 1, pt: 1 }}>
+            <Typography variant="caption" fontWeight={800}>Total propina:</Typography>
+            <Typography variant="caption" fontWeight={900} color="#ef6c00">
+              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalPropinas)}
+            </Typography>
+          </Box>
+        )}
       </Box>
-      <Button fullWidth variant="outlined" onClick={agregarPropina} sx={{ mb: propinas.length ? 1.5 : 0, borderRadius: 2, borderColor: '#ef6c00', color: '#ef6c00', fontWeight: 700 }}>
-        Agregar propina
-      </Button>
-      {propinas.map((propina, idx) => (
-        <Box key={`${propina.metodo_pago}-${idx}`} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, py: 0.5 }}>
-          <Typography variant="caption" fontWeight={700}>
-            {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(propina.monto)} {propina.metodo_pago}
-          </Typography>
-          <IconButton size="small" color="error" onClick={() => quitarPropina(idx)} sx={{ p: 0.25 }}>
-            <DeleteIcon fontSize="inherit" />
-          </IconButton>
-        </Box>
-      ))}
-      {propinas.length > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #ffcc80', mt: 1, pt: 1 }}>
-          <Typography variant="caption" fontWeight={800}>Total propina:</Typography>
-          <Typography variant="caption" fontWeight={900} color="#ef6c00">
-            {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalPropinas)}
-          </Typography>
-        </Box>
-      )}
-    </Box>
-  );
+    );
+  };
 
   const imprimirFacturaTermica = (factura, delay = 500) => {
     setFacturaFinal(null);
@@ -396,6 +440,11 @@ const FacturacionPage = () => {
   };
 
   const manejarFacturacion = async () => {
+    // Protección contra doble-clic
+    if (loading) {
+      return;
+    }
+
     if (!metodoPago) {
       showSnack('Debes seleccionar un método de pago.', 'warning');
       return;
@@ -417,6 +466,7 @@ const FacturacionPage = () => {
       return;
     }
 
+    setLoading(true);
     try {
       const payload = {
         metodo_pago: metodoPago,
@@ -479,6 +529,8 @@ const FacturacionPage = () => {
     } catch (error) {
       console.error('Error en facturación:', error);
       showSnack('Error al procesar el pago o cerrar la comanda.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -565,6 +617,11 @@ const FacturacionPage = () => {
   const puedeFacturar = sumaPagos >= totalCaja && pagosPartiales.every(p => p.metodo_pago);
 
   const manejarFacturacionDividida = async () => {
+    // Protección contra doble-clic
+    if (loading) {
+      return;
+    }
+
     if (a_domicilio && !direccion_entrega?.trim()) {
       showSnack('La dirección de entrega es obligatoria para pedidos a domicilio.', 'warning');
       return;
@@ -585,6 +642,7 @@ const FacturacionPage = () => {
       return;
     }
 
+    setLoading(true);
     try {
       // Crear factura con detalles de pagos parciales
       const payload = {
@@ -648,6 +706,8 @@ const FacturacionPage = () => {
     } catch (error) {
       console.error('Error en facturación dividida:', error);
       showSnack(error.response?.data?.error || error.response?.data?.message || 'Error al procesar la factura dividida.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -919,9 +979,10 @@ const FacturacionPage = () => {
 
                     {pedidoActual.length > 0 && (
                       <Button
-                        fullWidth variant="contained" onClick={manejarFacturacion} disabled={pedidoActual.length === 0}
+                        fullWidth variant="contained" onClick={manejarFacturacion} disabled={pedidoActual.length === 0 || loading}
                         sx={{ mt: 'auto', py: 2, background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 3, fontWeight: 800, fontSize: '1rem', letterSpacing: 1, boxShadow: '0 4px 15px rgba(233,69,96,0.4)' }}
                       >
+                        {loading ? <CircularProgress size={24} sx={{ mr: 1, color: '#fff' }} /> : ''}
                         COBRAR AHORA
                       </Button>
                     )}
@@ -1013,9 +1074,10 @@ const FacturacionPage = () => {
                         Cancelar
                       </Button>
                       <Button
-                        fullWidth variant="contained" onClick={manejarFacturacionDividida} disabled={!puedeFacturar}
-                        sx={{ background: puedeFacturar ? 'linear-gradient(135deg, #4caf50, #388e3c)' : '#ccc', borderRadius: 2, fontWeight: 800 }}
+                        fullWidth variant="contained" onClick={manejarFacturacionDividida} disabled={!puedeFacturar || loading}
+                        sx={{ background: (puedeFacturar && !loading) ? 'linear-gradient(135deg, #4caf50, #388e3c)' : '#ccc', borderRadius: 2, fontWeight: 800 }}
                       >
+                        {loading ? <CircularProgress size={24} sx={{ mr: 1, color: '#fff' }} /> : ''}
                         COBRAR
                       </Button>
                     </Box>

@@ -164,42 +164,51 @@ const PublicMenuPage = () => {
 
       {/* Container Mobile */}
       <Container maxWidth="sm" sx={{ mt: 3, position: 'relative', zIndex: 2 }}>
-        {/* Tabs de Categorías */}
-        <Paper
-          elevation={0}
-          sx={{
-            background: 'rgba(255,255,255,0.95)',
-            borderRadius: 2,
-            mb: 3,
-            border: '1px solid rgba(233, 69, 96, 0.2)',
-          }}
-        >
-          <Tabs
-            value={categoriaActiva}
-            onChange={handleTabChange}
-            variant="scrollable"
-            scrollButtons="auto"
+        {/* Tabs de Categorías con indicador de scroll */}
+        <Box>
+          <Paper
+            elevation={0}
+            className="public-menu-tabs-container"
             sx={{
-              '& .MuiTabs-indicator': {
-                backgroundColor: '#e94560',
-                height: 4,
-              },
-              '& .MuiTab-root': {
-                color: '#666',
-                fontWeight: 600,
-                fontSize: '12px',
-                textTransform: 'capitalize',
-                '&.Mui-selected': {
-                  color: '#e94560',
-                },
-              },
+              background: 'rgba(255,255,255,0.95)',
+              borderRadius: 2,
+              border: '1px solid rgba(233, 69, 96, 0.2)',
+              overflow: 'hidden',
             }}
           >
-            {categorias.map((cat, idx) => (
-              <Tab key={idx} label={cat.label} />
-            ))}
-          </Tabs>
-        </Paper>
+            <Tabs
+              value={categoriaActiva}
+              onChange={handleTabChange}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                '& .MuiTabs-indicator': {
+                  backgroundColor: '#e94560',
+                  height: 4,
+                },
+                '& .MuiTab-root': {
+                  color: '#666',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  textTransform: 'capitalize',
+                  '&.Mui-selected': {
+                    color: '#e94560',
+                  },
+                },
+              }}
+            >
+              {categorias.map((cat, idx) => (
+                <Tab key={idx} label={cat.label} />
+              ))}
+            </Tabs>
+          </Paper>
+
+          {/* Texto animado de deslizamiento con dedo */}
+          <div className="scroll-hint-container">
+            <span className="swipe-hand">👆</span>
+            <span className="scroll-hint-text">Desliza para ver mas categorías »</span>
+          </div>
+        </Box>
 
         {/* Productos */}
         <Box>

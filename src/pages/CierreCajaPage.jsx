@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box, Typography, Paper, Grid, TextField, Button,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  CircularProgress, Snackbar, Alert
+  CircularProgress, Snackbar, Alert, Divider
 } from '@mui/material';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
@@ -77,6 +77,38 @@ const totalDomicilioFacturas = (facturas) => {
     .reduce((sum, f) => sum + Number(f.monto_domicilio || 0), 0);
 };
 
+const totalPropinasFacturasPorMetodo = (facturas) => {
+  const resumen = {};
+  facturas.forEach(f => {
+    const propinas = obtenerPropinasFactura(f);
+    propinas.forEach(propina => {
+      const metodo = propina.metodo_pago || 'sin_metodo';
+      if (!resumen[metodo]) resumen[metodo] = 0;
+      resumen[metodo] += Number(propina.monto || 0);
+    });
+  });
+  return resumen;
+};
+
+const totalDomiciliosFacturasPorMetodo = (facturas) => {
+  const resumen = {};
+  facturas
+    .filter(f => f.a_domicilio && f.monto_domicilio > 0)
+    .forEach(f => {
+      const metodo = f.metodo_pago_domicilio || 'sin_metodo';
+      if (!resumen[metodo]) resumen[metodo] = 0;
+      resumen[metodo] += Number(f.monto_domicilio || 0);
+    });
+  return resumen;
+};
+
+const textoResumenPorMetodo = (resumen) => {
+  if (Object.keys(resumen).length === 0) return '-';
+  return Object.entries(resumen)
+    .map(([metodo, monto]) => `${formatCol(monto)} ${metodo}`)
+    .join(', ');
+};
+
 const formatPeriodo = (iso) => {
   const [y, m, d] = iso.split('-');
   return new Date(Number(y), Number(m) - 1, Number(d))
@@ -127,6 +159,7 @@ const PRINT_STYLE = `
     .st { font-size: 8px; font-weight: bold; margin: 6px 0 2px; }
     .st-blue { color: #1565c0; }
     .st-red  { color: #c62828; }
+    .st-green { color: #2e7d32; }
 
     /* Tablas de datos */
     table.data { font-size: 7px; border-collapse: collapse; width: 100%; margin-bottom: 8px; }
@@ -247,7 +280,7 @@ const CierreCajaPage = () => {
     </TableCell>
   );
 
-  const efectivoNeto = globalesIngreso.efectivo - globalesEgreso.efectivo;
+  const efectivoNeto = globalesIngreso.efectivo - globalesEgreso.efectivo - globalesCostos.efectivo;
 
   return (
     <Box>
@@ -282,53 +315,116 @@ const CierreCajaPage = () => {
           </Grid>
         </Paper>
 
-        <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid #c8e6c9', background: 'rgba(76,175,80,0.02)' }}>
-          <Typography variant="subtitle1" fontWeight={700} color="success.main" textAlign="center" mb={2}>
-            TOTALES GLOBALES (INGRESOS RECAUDADOS Y GASTOS)
-          </Typography>
-          <Typography variant="caption" color="text.secondary" textAlign="center" display="block" mb={2}>
-            del {formatPeriodo(fechaInicio)} al {formatPeriodo(fechaFin)}
-          </Typography>
-          <Grid container spacing={2} justifyContent="center" textAlign="center">
-            {[
-              { label: 'TOTAL FACTURA', val: globalesIngreso.total, color: '#1976d2' },
-              { label: 'PROPINA', val: globalesIngreso.propina, color: '#ef6c00' },
-              { label: 'EFECTIVO', val: globalesIngreso.efectivo, color: '#1a1a2e' },
-              { label: 'BANCOLOMBIA', val: globalesIngreso.bancolombia, color: '#1a1a2e' },
-              { label: 'NEQUI', val: globalesIngreso.nequi, color: '#1a1a2e' },
-              { label: 'DAVIPLATA', val: globalesIngreso.daviplata, color: '#1a1a2e' },
-              { label: 'DATAFONO', val: globalesIngreso.datafono, color: '#1a1a2e' },
-              { label: 'GASTOS GLOBALES', val: globalesEgreso.total, color: 'error.main' },
-              { label: 'GASTOS EN EFECTIVO', val: globalesEgreso.efectivo, color: 'error.main' },
-              { label: 'EFECTIVO EN CAJA', val: efectivoNeto, color: efectivoNeto >= 0 ? 'success.main' : 'error.main' },
-            ].map(({ label, val, color }) => (
-              <Grid item xs={4} md={2} key={label}>
-                <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight={600} display="block">{label}</Typography>
-                <Typography variant="h6" fontWeight={700} color={color}>{formatCol(val)}</Typography>
-              </Grid>
-            ))}
-          </Grid>
-        </Paper>
+        <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid #e0e0e0', overflow: 'hidden', mb: 4 }}>
+          {/* Sección 1: INGRESOS RECAUDADOS */}
+          <Box sx={{ p: 3, background: 'rgba(76,175,80,0.02)' }}>
+            <Typography variant="subtitle1" fontWeight={700} color="success.main" textAlign="center" mb={2}>
+              INGRESOS RECAUDADOS
+            </Typography>
+            <Typography variant="caption" color="text.secondary" textAlign="center" display="block" mb={2}>
+              del {formatPeriodo(fechaInicio)} al {formatPeriodo(fechaFin)}
+            </Typography>
+            <Grid container spacing={2} justifyContent="center" textAlign="center">
+              {[
+                { label: 'TOTAL FACTURA', val: globalesIngreso.total, color: '#1976d2', tipo: 'simple' },
+                { label: 'PROPINA', val: totalPropinasFacturasPorMetodo(filtradas), color: '#ef6c00', tipo: 'resumen' },
+                { label: 'EFECTIVO', val: globalesIngreso.efectivo, color: '#1a1a2e', tipo: 'simple' },
+                { label: 'BANCOLOMBIA', val: globalesIngreso.bancolombia, color: '#1a1a2e', tipo: 'simple' },
+                { label: 'NEQUI', val: globalesIngreso.nequi, color: '#1a1a2e', tipo: 'simple' },
+                { label: 'DAVIPLATA', val: globalesIngreso.daviplata, color: '#1a1a2e', tipo: 'simple' },
+                { label: 'DATAFONO', val: globalesIngreso.datafono, color: '#1a1a2e', tipo: 'simple' },
+              ].map(({ label, val, color, tipo }) => (
+                <Grid item xs={4} md={2} key={label}>
+                  <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight={600} display="block">{label}</Typography>
+                  {tipo === 'simple' ? (
+                    <Typography variant="h6" fontWeight={700} color={color}>{formatCol(val)}</Typography>
+                  ) : (
+                    <Box sx={{ fontSize: '0.75rem', fontWeight: 700, color }}>
+                      {Object.entries(val).length === 0 ? (
+                        '-'
+                      ) : (
+                        Object.entries(val).map(([metodo, monto], idx, arr) => (
+                          <div key={metodo}>
+                            {formatCol(monto)} {metodo}
+                          </div>
+                        ))
+                      )}
+                    </Box>
+                  )}
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
 
-        <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid #bbdefb', background: 'rgba(21,101,192,0.02)' }}>
-          <Typography variant="subtitle1" fontWeight={700} color="#1565c0" textAlign="center" mb={2}>
-            COSTOS OPERATIVOS POR MÉTODO DE PAGO
-          </Typography>
-          <Grid container spacing={2} justifyContent="center" textAlign="center">
-            {[
-              { label: 'COSTO EFECTIVO', val: globalesCostos.efectivo, color: '#1565c0' },
-              { label: 'COSTO BANCOLOMBIA', val: globalesCostos.bancolombia, color: '#1565c0' },
-              { label: 'COSTO NEQUI', val: globalesCostos.nequi, color: '#1565c0' },
-              { label: 'COSTO DAVIPLATA', val: globalesCostos.daviplata, color: '#1565c0' },
-              { label: 'COSTO DATAFONO', val: globalesCostos.datafono, color: '#1565c0' },
-              { label: 'COSTOS GLOBALES', val: globalesCostos.total, color: '#1565c0' },
-            ].map(({ label, val, color }) => (
-              <Grid item xs={4} md={2} key={label}>
-                <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight={600} display="block">{label}</Typography>
-                <Typography variant="h6" fontWeight={700} color={color}>{formatCol(val)}</Typography>
-              </Grid>
-            ))}
-          </Grid>
+          <Divider sx={{ my: 0 }} />
+
+          {/* Sección 2: GASTOS OPERATIVOS */}
+          <Box sx={{ p: 3, background: 'rgba(198,40,40,0.02)' }}>
+            <Typography variant="subtitle1" fontWeight={700} color="#c62828" textAlign="center" mb={2}>
+              GASTOS POR MÉTODO DE PAGO
+            </Typography>
+            <Grid container spacing={2} justifyContent="center" textAlign="center">
+              {[
+                { label: 'GASTO EFECTIVO', val: globalesEgreso.efectivo, color: '#c62828' },
+                { label: 'GASTO BANCOLOMBIA', val: globalesEgreso.bancolombia, color: '#c62828' },
+                { label: 'GASTO NEQUI', val: globalesEgreso.nequi, color: '#c62828' },
+                { label: 'GASTO DAVIPLATA', val: globalesEgreso.daviplata, color: '#c62828' },
+                { label: 'GASTO DATAFONO', val: globalesEgreso.datafono, color: '#c62828' },
+                { label: 'GASTOS GLOBALES', val: globalesEgreso.total, color: '#c62828' },
+              ].map(({ label, val, color }) => (
+                <Grid item xs={4} md={2} key={label}>
+                  <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight={600} display="block">{label}</Typography>
+                  <Typography variant="h6" fontWeight={700} color={color}>{formatCol(val)}</Typography>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+
+          <Divider sx={{ my: 0 }} />
+
+          {/* Sección 2.5: COSTOS OPERATIVOS */}
+          <Box sx={{ p: 3, background: 'rgba(21,101,192,0.02)' }}>
+            <Typography variant="subtitle1" fontWeight={700} color="#1565c0" textAlign="center" mb={2}>
+              COSTOS OPERATIVOS POR MÉTODO DE PAGO
+            </Typography>
+            <Grid container spacing={2} justifyContent="center" textAlign="center">
+              {[
+                { label: 'COSTO EFECTIVO', val: globalesCostos.efectivo, color: '#1565c0' },
+                { label: 'COSTO BANCOLOMBIA', val: globalesCostos.bancolombia, color: '#1565c0' },
+                { label: 'COSTO NEQUI', val: globalesCostos.nequi, color: '#1565c0' },
+                { label: 'COSTO DAVIPLATA', val: globalesCostos.daviplata, color: '#1565c0' },
+                { label: 'COSTO DATAFONO', val: globalesCostos.datafono, color: '#1565c0' },
+                { label: 'COSTOS GLOBALES', val: globalesCostos.total, color: '#1565c0' },
+              ].map(({ label, val, color }) => (
+                <Grid item xs={4} md={2} key={label}>
+                  <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight={600} display="block">{label}</Typography>
+                  <Typography variant="h6" fontWeight={700} color={color}>{formatCol(val)}</Typography>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+
+          <Divider sx={{ my: 0 }} />
+          <Box sx={{ p: 3, background: 'rgba(76,175,80,0.02)' }}>
+            <Typography variant="subtitle1" fontWeight={700} color="#2e7d32" textAlign="center" mb={2}>
+              SALDOS TOTALES
+            </Typography>
+            <Grid container spacing={2} justifyContent="center" textAlign="center">
+              {[
+                { label: 'SALDO EFECTIVO', val: globalesIngreso.efectivo - globalesEgreso.efectivo - globalesCostos.efectivo, color: '#2e7d32' },
+                { label: 'SALDO BANCOLOMBIA', val: globalesIngreso.bancolombia - globalesEgreso.bancolombia - globalesCostos.bancolombia, color: '#2e7d32' },
+                { label: 'SALDO NEQUI', val: globalesIngreso.nequi - globalesEgreso.nequi - globalesCostos.nequi, color: '#2e7d32' },
+                { label: 'SALDO DAVIPLATA', val: globalesIngreso.daviplata - globalesEgreso.daviplata - globalesCostos.daviplata, color: '#2e7d32' },
+                { label: 'SALDO DATAFONO', val: globalesIngreso.datafono - globalesEgreso.datafono - globalesCostos.datafono, color: '#2e7d32' },
+                { label: 'SALDOS GLOBALES', val: globalesIngreso.total - globalesEgreso.total - globalesCostos.total, color: '#2e7d32' },
+              ].map(({ label, val, color }) => (
+                <Grid item xs={4} md={2} key={label}>
+                  <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight={600} display="block">{label}</Typography>
+                  <Typography variant="h6" fontWeight={700} color={color}>{formatCol(val)}</Typography>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
         </Paper>
 
         {loading ? (
@@ -386,8 +482,8 @@ const CierreCajaPage = () => {
                   <TableRow sx={{ bgcolor: '#f5f5f5' }}>
                     <RCell isHeader colSpan={4} align="right">TOTALES FACTURADO</RCell>
                     <RCell isHeader color="#1976d2">{formatCol(globalesIngreso.total)}</RCell>
-                    <RCell isHeader color="#ef6c00">{formatCol(globalesIngreso.propina)}</RCell>
-                    <RCell isHeader color="#1565c0">{formatCol(totalDomicilioFacturas(filtradas))}</RCell>
+                    <RCell isHeader color="#ef6c00">{textoResumenPorMetodo(totalPropinasFacturasPorMetodo(filtradas))}</RCell>
+                    <RCell isHeader color="#1565c0">{textoResumenPorMetodo(totalDomiciliosFacturasPorMetodo(filtradas))}</RCell>
                     {METODOS_PAGO.map(m => <RCell isHeader align="center" key={m}>{formatCol(globalesIngreso[m])}</RCell>)}
                   </TableRow>
                 </TableBody>
@@ -495,9 +591,6 @@ const CierreCajaPage = () => {
               <td><span className="lbl">Total Factura</span></td>
               <td><span className="lbl">Propina</span></td>
               {METODOS_PAGO.map(m => <td key={m}><span className="lbl">{m}</span></td>)}
-              <td><span className="lbl">Gastos Globales</span></td>
-              <td><span className="lbl">Gastos Efectivo</span></td>
-              <td><span className="lbl">Efectivo en Caja</span></td>
             </tr>
           </thead>
           <tbody>
@@ -505,9 +598,6 @@ const CierreCajaPage = () => {
               <td><span className="val c-blue">{formatCol(globalesIngreso.total)}</span></td>
               <td><span className="val">{formatCol(globalesIngreso.propina)}</span></td>
               {METODOS_PAGO.map(m => <td key={m}><span className="val">{formatCol(globalesIngreso[m])}</span></td>)}
-              <td><span className="val c-red">{formatCol(globalesEgreso.total)}</span></td>
-              <td><span className="val c-red">{formatCol(globalesEgreso.efectivo)}</span></td>
-              <td><span className={`val ${efectivoNeto >= 0 ? 'c-green' : 'c-red'}`}>{formatCol(efectivoNeto)}</span></td>
             </tr>
           </tbody>
         </table>
@@ -544,8 +634,8 @@ const CierreCajaPage = () => {
             <tr className="tr">
               <td colSpan={4} style={{ textAlign: 'right' }}>TOTALES</td>
               <td>{formatCol(globalesIngreso.total)}</td>
-              <td>{formatCol(globalesIngreso.propina)}</td>
-              <td>{formatCol(totalDomicilioFacturas(filtradas))}</td>
+              <td>{textoResumenPorMetodo(totalPropinasFacturasPorMetodo(filtradas))}</td>
+              <td>{textoResumenPorMetodo(totalDomiciliosFacturasPorMetodo(filtradas))}</td>
               {METODOS_PAGO.map(m => <td key={m} align="center">{formatCol(globalesIngreso[m])}</td>)}
             </tr>
           </tbody>
@@ -605,6 +695,102 @@ const CierreCajaPage = () => {
               <td colSpan={4} style={{ textAlign: 'right' }}>TOTALES</td>
               <td></td>
               <td className="c-blue">{formatCol(globalesCostos.total)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Tabla Gastos Operativos por Método de Pago */}
+        <p className="st st-red">Gastos Operativos por Método de Pago</p>
+        <table className="data">
+          <thead>
+            <tr>
+              <th>Método de Pago</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { label: 'Efectivo', val: globalesEgreso.efectivo },
+              { label: 'Bancolombia', val: globalesEgreso.bancolombia },
+              { label: 'Nequi', val: globalesEgreso.nequi },
+              { label: 'Daviplata', val: globalesEgreso.daviplata },
+              { label: 'Datafono', val: globalesEgreso.datafono },
+            ].map((item, idx) => (
+              <tr key={idx}>
+                <td>{item.label}</td>
+                <td className="c-red">{formatCol(item.val)}</td>
+              </tr>
+            ))}
+            <tr className="tr">
+              <td style={{ textAlign: 'right' }}>TOTALES GLOBALES</td>
+              <td className="c-red">{formatCol(globalesEgreso.total)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Tabla Costos Operativos por Método de Pago */}
+        <p className="st st-blue">Costos Operativos por Método de Pago</p>
+        <table className="data">
+          <thead>
+            <tr>
+              <th>Método de Pago</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { label: 'Efectivo', val: globalesCostos.efectivo },
+              { label: 'Bancolombia', val: globalesCostos.bancolombia },
+              { label: 'Nequi', val: globalesCostos.nequi },
+              { label: 'Daviplata', val: globalesCostos.daviplata },
+              { label: 'Datafono', val: globalesCostos.datafono },
+            ].map((item, idx) => (
+              <tr key={idx}>
+                <td>{item.label}</td>
+                <td className="c-blue">{formatCol(item.val)}</td>
+              </tr>
+            ))}
+            <tr className="tr">
+              <td style={{ textAlign: 'right' }}>TOTALES GLOBALES</td>
+              <td className="c-blue">{formatCol(globalesCostos.total)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Tabla Saldos Totales */}
+        <p className="st st-green">Saldos Totales</p>
+        <table className="data">
+          <thead>
+            <tr>
+              <th>Método de Pago</th>
+              <th>Ingresos</th>
+              <th>Gastos</th>
+              <th>Costos</th>
+              <th>Saldo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { label: 'Efectivo', ingreso: globalesIngreso.efectivo, gasto: globalesEgreso.efectivo, costo: globalesCostos.efectivo },
+              { label: 'Bancolombia', ingreso: globalesIngreso.bancolombia, gasto: globalesEgreso.bancolombia, costo: globalesCostos.bancolombia },
+              { label: 'Nequi', ingreso: globalesIngreso.nequi, gasto: globalesEgreso.nequi, costo: globalesCostos.nequi },
+              { label: 'Daviplata', ingreso: globalesIngreso.daviplata, gasto: globalesEgreso.daviplata, costo: globalesCostos.daviplata },
+              { label: 'Datafono', ingreso: globalesIngreso.datafono, gasto: globalesEgreso.datafono, costo: globalesCostos.datafono },
+            ].map((item, idx) => (
+              <tr key={idx}>
+                <td>{item.label}</td>
+                <td className="c-blue">{formatCol(item.ingreso)}</td>
+                <td className="c-red">{formatCol(item.gasto)}</td>
+                <td className="c-blue">{formatCol(item.costo)}</td>
+                <td className="c-green">{formatCol(item.ingreso - item.gasto - item.costo)}</td>
+              </tr>
+            ))}
+            <tr className="tr">
+              <td style={{ textAlign: 'right' }}>TOTALES GLOBALES</td>
+              <td className="c-blue">{formatCol(globalesIngreso.total)}</td>
+              <td className="c-red">{formatCol(globalesEgreso.total)}</td>
+              <td className="c-blue">{formatCol(globalesCostos.total)}</td>
+              <td className="c-green">{formatCol(globalesIngreso.total - globalesEgreso.total - globalesCostos.total)}</td>
             </tr>
           </tbody>
         </table>
