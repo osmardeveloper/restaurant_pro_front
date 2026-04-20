@@ -567,8 +567,24 @@ const FacturacionPage = () => {
       return;
     }
     try {
+      // Obtener la factura completa para extraer id_comanda
+      const factura = facturas.find(f => f._id === deleteId);
+      
+      // Eliminar la factura
       await facturacionService.remove(deleteId, masterKey);
       showSnack('Factura eliminada e inventario restituido.', 'success');
+      
+      // Si la factura tiene una comanda asociada, eliminarla también
+      if (factura?.id_comanda) {
+        try {
+          await comandaService.remove(factura.id_comanda, masterKey);
+          showSnack('Factura y comanda eliminadas correctamente.', 'success');
+        } catch (err) {
+          console.warn('Error al eliminar comanda asociada:', err);
+          showSnack('Factura eliminada, pero hubo un error al eliminar la comanda.', 'warning');
+        }
+      }
+      
       setDeleteDialogOpen(false);
       fetchDatos(); // Refrescar lista
     } catch (err) {

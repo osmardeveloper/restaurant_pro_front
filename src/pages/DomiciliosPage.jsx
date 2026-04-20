@@ -61,6 +61,12 @@ const DomiciliosPage = () => {
   // Estado para impresión de comanda
   const [comandaParaImprimir, setComandaParaImprimir] = useState(null);
 
+  // Modal Eliminar Comanda
+  const [openEliminar, setOpenEliminar] = useState(false);
+  const [comandaAEliminar, setComandaAEliminar] = useState(null);
+  const [claveEliminar, setClaveEliminar] = useState('');
+  const CLAVE_MAESTRA = 'res2026';
+
   const [formErrors, setFormErrors]     = useState({});
   const [snack, setSnack]               = useState({ open: false, msg: '', severity: 'success' });
   const [busquedaProd, setBusquedaProd] = useState('');
@@ -235,7 +241,31 @@ const DomiciliosPage = () => {
       }, 1000);
     }, 300);
   };
+  const abrirModalEliminar = (comanda) => {
+    setComandaAEliminar(comanda);
+    setClaveEliminar('');
+    setOpenEliminar(true);
+  };
 
+  const confirmarEliminarComanda = async () => {
+    if (!claveEliminar) {
+      showSnack('Ingresa la clave maestra.', 'warning');
+      return;
+    }
+    if (claveEliminar !== CLAVE_MAESTRA) {
+      showSnack('Clave maestra incorrecta.', 'error');
+      return;
+    }
+    try {
+      await comandaService.remove(comandaAEliminar._id, claveEliminar);
+      showSnack('Comanda eliminada correctamente.', 'success');
+      setOpenEliminar(false);
+      setClaveEliminar('');
+      fetchData();
+    } catch (err) {
+      showSnack(err.response?.data?.message || 'Error al eliminar la comanda.', 'error');
+    }
+  };
   const totalEdicion = form.pedido_actual.reduce((acc, curr) => acc + (curr.precio || 0), 0);
   const prodFiltrados = platos.filter(p => (p.nombre || '').toLowerCase().includes(busquedaProd.toLowerCase()));
   const formatoCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
@@ -316,9 +346,12 @@ const DomiciliosPage = () => {
                       </>
                     )}
                   </Box>
-                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
+                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', gap: 0.5 }}>
                     {usuario?.rol === 'admin' && (
-                      <Tooltip title="Editar Domicilio"><IconButton size="small" onClick={() => abrirEditar(comanda)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      <>
+                        <Tooltip title="Editar Domicilio"><IconButton size="small" onClick={() => abrirEditar(comanda)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                        <Tooltip title="Eliminar Comanda"><IconButton size="small" onClick={() => abrirModalEliminar(comanda)} sx={{ color: '#e74c3c' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                      </>
                     )}
                   </Box>
                 </CardActions>
@@ -500,6 +533,27 @@ const DomiciliosPage = () => {
         <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
           <Button onClick={() => { setOpenPropina(false); setValorPropina(''); }} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
           <Button onClick={() => { imprimirCuentaConPropina(); setOpenPropina(false); setValorPropina(''); }} variant="contained" sx={{ borderRadius: 2, background: '#1a1a2e' }}>Imprimir</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal Eliminar Comanda */}
+      <Dialog open={openEliminar} onClose={() => setOpenEliminar(false)} sx={{ '& .MuiDialog-paper': { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 700, color: '#e74c3c' }}>Eliminar Comanda</DialogTitle>
+        <DialogContent sx={{ minWidth: 400, py: 2 }}>
+          <Typography variant="body2" sx={{ mb: 2 }}>Ingresa la clave maestra para eliminar esta comanda.</Typography>
+          <TextField 
+            fullWidth 
+            type="password" 
+            label="Clave Maestra" 
+            value={claveEliminar}
+            onChange={e => setClaveEliminar(e.target.value)}
+            placeholder="Ingresa la clave"
+            size="small"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEliminar(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button onClick={confirmarEliminarComanda} variant="contained" color="error" sx={{ borderRadius: 2 }}>Eliminar</Button>
         </DialogActions>
       </Dialog>
 

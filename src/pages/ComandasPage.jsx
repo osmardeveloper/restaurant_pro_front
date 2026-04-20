@@ -59,6 +59,12 @@ const ComandasPage = () => {
   const [valorPropina, setValorPropina] = useState('');
   const [reciboDatos, setReciboDatos] = useState(null); // Estado para los datos del recibo
 
+  // Modal Eliminar Comanda con Clave Maestra
+  const [openEliminar, setOpenEliminar] = useState(false);
+  const [comandaAEliminar, setComandaAEliminar] = useState(null);
+  const [claveEliminacion, setClaveEliminacion] = useState('');
+  const CLAVE_MAESTRA = 'res2026'; // Clave maestra para eliminar
+
   const fetchDatos = useCallback(async () => {
     setLoading(true);
     try {
