@@ -633,7 +633,7 @@ const FacturacionPage = () => {
   const puedeFacturar = sumaPagos >= totalCaja && pagosPartiales.every(p => p.metodo_pago);
 
   const manejarFacturacionDividida = async () => {
-    // Protección contra doble-clic
+    // Protección contra doble-clic push
     if (loading) {
       return;
     }
