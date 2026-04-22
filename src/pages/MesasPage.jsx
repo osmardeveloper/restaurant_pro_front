@@ -647,17 +647,10 @@ const MesasPage = () => {
             </Box>
           </Box>
 
-          {/* PROPINA SUGERIDA */}
-          <Box sx={{ border: '1px dashed #000', padding: '2mm', margin: '2mm 0', textAlign: 'center', backgroundColor: '#fafafa' }}>
-            <Typography fontWeight="bold" fontSize="11px" sx={{ margin: '1mm 0' }}>
-              PROPINA {reciboDatos.tipoPropina === 'porcentaje' ? `(${reciboDatos.valorPropina}%)` : ''}
-            </Typography>
-            <Typography fontWeight="bold" fontSize="14px" sx={{ margin: '1.5mm 0' }}>
-              ${reciboDatos.montoPropina.toLocaleString('es-CO')}
-            </Typography>
-            <Typography fontSize="9px" sx={{ lineHeight: '1.2', margin: '1mm 0 0 0' }}>
-              La propina es voluntaria<br />
-            </Typography>
+          {/* PROPINA */}
+          <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography fontSize="11px">Propina</Typography>
+            <Typography fontSize="11px">${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />

@@ -630,23 +630,19 @@ const DomiciliosPage = () => {
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
+          {/* SUBTOTAL */}
+          <Box sx={{ margin: '1.5mm 0' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '12px' }}>
+              <span>SUBTOTAL</span>
+              <span>${reciboDatos.totalPedido.toLocaleString('es-CO')}</span>
+            </Box>
+          </Box>
+
           {/* PROPINA */}
           <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography fontSize="11px">Propina</Typography>
             <Typography fontSize="11px">${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
           </Box>
-
-          <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
-
-          {/* TOTAL */}
-          <Box sx={{ margin: '1.5mm 0' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
-              <span>TOTAL</span>
-              <span>${(reciboDatos.totalPedido + reciboDatos.montoPropina).toLocaleString('es-CO')}</span>
-            </Box>
-          </Box>
-
-          <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
           {/* FOOTER */}
           <Typography sx={{ textAlign: 'center', fontWeight: 'bold', marginTop: '2mm', fontSize: '11px' }}>
