@@ -550,6 +550,9 @@ const VentaDirectaPage = () => {
 
           {/* ENCABEZADO */}
           <Box sx={{ textAlign: 'center', marginBottom: '2mm', fontWeight: 'bold' }}>
+            <Box sx={{ mb: 1, display: 'flex', justifyContent: 'center' }}>
+              <img src="/images/logo_factura.png" alt="Logo" style={{ maxWidth: '50mm', height: 'auto' }} />
+            </Box>
             <Typography fontWeight="bold" fontSize="14px">LA PERLA RESTAURANTE BQ</Typography>
             <Typography fontSize="10px">Dir.: cra 62 # 72-28</Typography>
             <Typography fontSize="10px">Telf.: 315 075 2214</Typography>

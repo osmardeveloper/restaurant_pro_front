@@ -1420,6 +1420,9 @@ const FacturacionPage = () => {
             `}
           </style>
           <Box textAlign="center" mb={2}>
+            <Box sx={{ mb: 1, display: 'flex', justifyContent: 'center' }}>
+              <img src="/images/logo_factura.png" alt="Logo" style={{ maxWidth: '50mm', height: 'auto' }} />
+            </Box>
             <Typography fontWeight="bold" fontSize="16px">LA PERLA RESTAURANTE BQ</Typography>
             <Typography fontSize="12px">Dir.: cra 62 # 72-28</Typography>
             <Typography fontSize="12px">Telf.: 315 075 2214</Typography>
