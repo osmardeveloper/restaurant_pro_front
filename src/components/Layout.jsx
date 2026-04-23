@@ -25,6 +25,7 @@ import PointOfSaleIcon    from '@mui/icons-material/PointOfSale';
 import RequestQuoteIcon   from '@mui/icons-material/RequestQuote';
 import AttachMoneyIcon    from '@mui/icons-material/AttachMoney';
 import AssessmentIcon     from '@mui/icons-material/Assessment';
+import HistoryIcon        from '@mui/icons-material/History';
 import { useAuth }        from '../context/AuthContext';
 import { configuracionService } from '../services/api';
 
@@ -40,6 +41,7 @@ const navItems = [
   { key: 'tomar_pedido', label: 'Tomar Pedido', path: '/tomar-pedido', icon: <PostAddIcon /> },
   { key: 'comandas',     label: 'Comandas',     path: '/comandas',     icon: <ReceiptLongIcon /> },
   { key: 'facturacion',  label: 'Facturación',  path: '/facturacion',  icon: <PointOfSaleIcon /> },
+  { key: 'auditoria_facturacion', label: 'Auditoría de Facturas', path: '/auditoria-facturacion', icon: <HistoryIcon />, requiereAdmin: true },
   { key: 'gastos',       label: 'Gastos',       path: '/gastos',       icon: <RequestQuoteIcon /> },
   { key: 'costos',       label: 'Costos',       path: '/costos',       icon: <AttachMoneyIcon /> },
   { key: 'inventario',   label: 'Inventario',   path: '/inventario',   icon: <InventoryIcon /> },
@@ -60,7 +62,13 @@ const Layout = () => {
   // Filtrar ítems permitidos - Memoizado para evitar bucles de renderizado
   const itemsPermitidos = useMemo(() => {
     return navItems.filter(item => {
+      // Si requiere admin, solo mostrar a admins
+      if (item.requiereAdmin && usuario?.rol !== 'admin') return false;
+      
+      // Si es admin, mostrar todo
       if (usuario?.rol === 'admin') return true; 
+      
+      // Si no es admin, verificar permisos
       return permisos && permisos[item.key] === true;
     });
   }, [usuario?.rol, permisos]);

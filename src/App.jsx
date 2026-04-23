@@ -17,6 +17,7 @@ import ComandasPage     from './pages/ComandasPage';
 import ClientesPage     from './pages/ClientesPage';
 import TomarPedidoPage  from './pages/TomarPedidoPage';
 import FacturacionPage  from './pages/FacturacionPage';
+import AuditoriaFacturacionPage from './pages/AuditoriaFacturacionPage';
 import GastosPage       from './pages/GastosPage';
 import CostosPage       from './pages/CostosPage';
 import CierreCajaPage  from './pages/CierreCajaPage';
@@ -51,6 +52,7 @@ function App() {
             <Route path="tomar-pedido" element={<ProtectedRoute modulo="tomar_pedido"><TomarPedidoPage /></ProtectedRoute>} />
             <Route path="comandas"     element={<ProtectedRoute modulo="comandas"><ComandasPage /></ProtectedRoute>} />
             <Route path="facturacion"  element={<ProtectedRoute modulo="facturacion"><FacturacionPage /></ProtectedRoute>} />
+            <Route path="auditoria-facturacion" element={<ProtectedRoute modulo="facturacion"><AuditoriaFacturacionPage /></ProtectedRoute>} />
             <Route path="gastos"       element={<ProtectedRoute modulo="gastos"><GastosPage /></ProtectedRoute>} />
             <Route path="costos"       element={<ProtectedRoute modulo="costos"><CostosPage /></ProtectedRoute>} />
             <Route path="inventario"   element={<ProtectedRoute modulo="inventario"><InventarioPage /></ProtectedRoute>} />

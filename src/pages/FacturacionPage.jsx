@@ -90,6 +90,7 @@ const FacturacionPage = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [masterKey, setMasterKey] = useState('');
+  const [motivoEliminacion, setMotivoEliminacion] = useState('');
 
   const [filtroGeneral, setFiltroGeneral] = useState('');
   const [fechaDesde, setFechaDesde] = useState('');
@@ -558,6 +559,7 @@ const FacturacionPage = () => {
   const handleDelete = (id) => {
     setDeleteId(id);
     setMasterKey('');
+    setMotivoEliminacion('');
     setDeleteDialogOpen(true);
   };
 
@@ -566,21 +568,36 @@ const FacturacionPage = () => {
       showSnack('Ingresa la clave maestra.', 'warning');
       return;
     }
+    if (!motivoEliminacion.trim()) {
+      showSnack('Debes indicar el motivo de la eliminación.', 'warning');
+      return;
+    }
     try {
       // Obtener la factura completa para extraer id_comanda
       const factura = facturas.find(f => f._id === deleteId);
+      const idComanda = factura?.id_comanda?._id || factura?.id_comanda; // Maneja tanto objeto como string
       
       // Eliminar la factura
-      await facturacionService.remove(deleteId, masterKey);
+      await facturacionService.remove(deleteId, masterKey, motivoEliminacion);
       showSnack('Factura eliminada e inventario restituido.', 'success');
       
+      // Notificar a otras páginas que se eliminó una factura usando BroadcastChannel
+      const channel = new BroadcastChannel('facturacion_eventos');
+      channel.postMessage({ 
+        tipo: 'factura_eliminada',
+        id: deleteId,
+        timestamp: new Date().toISOString()
+      });
+      channel.close();
+      
       // Si la factura tiene una comanda asociada, eliminarla también
-      if (factura?.id_comanda) {
+      if (idComanda) {
         try {
-          await comandaService.remove(factura.id_comanda, masterKey);
+          console.log('Eliminando comanda con ID:', idComanda);
+          await comandaService.remove(idComanda, masterKey);
           showSnack('Factura y comanda eliminadas correctamente.', 'success');
         } catch (err) {
-          console.warn('Error al eliminar comanda asociada:', err);
+          console.error('Error al eliminar comanda asociada:', err);
           showSnack('Factura eliminada, pero hubo un error al eliminar la comanda.', 'warning');
         }
       }
@@ -1599,19 +1616,38 @@ const FacturacionPage = () => {
       </Snackbar>
 
       {/* ── MODAL ELIMINAR CON CLAVE MAESTRA ── */}
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} PaperProps={{ sx: { borderRadius: 3 } }}>
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} PaperProps={{ sx: { borderRadius: 3 } }} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 700, color: 'error.main' }}>Eliminar Factura</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" sx={{ mb: 3 }}>
+          <Typography variant="body2" sx={{ mb: 2 }}>
             ¿Estás seguro de eliminar esta factura? <br/>
-            <strong>Se restituirá el stock de los productos facturados automáticamente.</strong><br/><br/>
-            Ingresa la <strong>Clave Maestra</strong> para confirmar:
+            <strong>Se restituirá el stock de los productos facturados automáticamente.</strong>
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 3, fontWeight: 500 }}>
+            Por favor, indica el motivo de la eliminación y la clave maestra:
           </Typography>
           <TextField 
-            fullWidth label="Clave Maestra" type="password" size="small" autoComplete="off"
-            value={masterKey} onChange={e => setMasterKey(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && confirmarEliminar()}
+            fullWidth 
+            label="Motivo de Eliminación" 
+            type="text" 
+            size="small" 
+            multiline
+            rows={3}
+            sx={{ mb: 2 }}
+            placeholder="Ej: Error en cobro, cliente cambió de opinión, corrección de datos..."
+            value={motivoEliminacion} 
+            onChange={e => setMotivoEliminacion(e.target.value)}
             autoFocus
+          />
+          <TextField 
+            fullWidth 
+            label="Clave Maestra" 
+            type="password" 
+            size="small" 
+            autoComplete="off"
+            value={masterKey} 
+            onChange={e => setMasterKey(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && confirmarEliminar()}
           />
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>

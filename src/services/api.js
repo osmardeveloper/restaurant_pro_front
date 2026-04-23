@@ -104,7 +104,14 @@ export const facturacionService = {
   getById: (id)    => api.get(`/facturacion/${id}`),
   getByComanda: (comandaId) => api.get(`/facturacion/comanda/${comandaId}`),
   create:  (datos) => api.post('/facturacion', datos),
-  remove:  (id, masterKey) => api.delete(`/facturacion/${id}`, { headers: { 'x-master-key': masterKey } }),
+  remove:  (id, masterKey, motivo_eliminacion) => api.request({
+    method: 'delete',
+    url: `/facturacion/${id}`,
+    headers: { 'x-master-key': masterKey },
+    data: { motivo_eliminacion }
+  }),
+  getFacturasEliminadas: (params) => api.get('/facturacion/auditoria/eliminadas', { params }),
+  getEstadisticasEliminadas: (params) => api.get('/facturacion/auditoria/estadisticas', { params }),
 };
 
 export const gastoService = {
