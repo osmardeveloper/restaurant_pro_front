@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import {
   Box, Container, Typography, Card, CardContent, Chip, 
-  Grid, Paper, Tab, Tabs, Skeleton
+  Grid, Paper, Tab, Tabs, Skeleton, CircularProgress
 } from '@mui/material';
 import { publicProductoService, publicCategoriasService } from '../services/api';
 import './PublicMenuPage.css';
@@ -213,13 +213,141 @@ const PublicMenuPage = () => {
         {/* Productos */}
         <Box>
           {loading ? (
-            <Grid container spacing={2}>
-              {[1, 2, 3].map(i => (
-                <Grid item xs={12} key={i}>
-                  <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 2 }} />
-                </Grid>
-              ))}
-            </Grid>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '400px',
+                gap: 3,
+                pt: 4,
+                pb: 4,
+              }}
+            >
+              {/* Spinner Animado */}
+              <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CircularProgress
+                  size={100}
+                  thickness={4}
+                  sx={{
+                    color: '#e94560',
+                    animation: 'spin 2s linear infinite',
+                    '@keyframes spin': {
+                      '0%': { transform: 'rotate(0deg)' },
+                      '100%': { transform: 'rotate(360deg)' },
+                    },
+                  }}
+                />
+                {/* Centro del Spinner */}
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    width: 70,
+                    height: 70,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '32px',
+                    boxShadow: '0 4px 15px rgba(233, 69, 96, 0.3)',
+                  }}
+                >
+                  🍽️
+                </Box>
+              </Box>
+
+              {/* Mensaje Principal */}
+              <Box sx={{ textAlign: 'center', mt: 2 }}>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 700,
+                    color: '#1a1a2e',
+                    mb: 1,
+                    fontSize: { xs: '18px', sm: '22px' },
+                  }}
+                >
+                  ¡Bienvenido a La Perla! 🎉
+                </Typography>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: '#555',
+                    mb: 1.5,
+                    fontSize: '15px',
+                    fontWeight: 500,
+                  }}
+                >
+                  Espere mientras el servidor carga los datos del menú
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: '#999',
+                    fontSize: '13px',
+                    fontStyle: 'italic',
+                  }}
+                >
+                  Puede tardar unos segundos... ⏳
+                </Typography>
+              </Box>
+
+              {/* Puntos Animados de Carga */}
+              <Box sx={{ display: 'flex', gap: 0.8, justifyContent: 'center', mt: 1 }}>
+                {[0, 1, 2].map((index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      backgroundColor: '#e94560',
+                      animation: `bounce 1.4s infinite ease-in-out`,
+                      animationDelay: `${index * 0.16}s`,
+                      '@keyframes bounce': {
+                        '0%, 80%, 100%': {
+                          opacity: 0.5,
+                          transform: 'scale(0.8)',
+                        },
+                        '40%': {
+                          opacity: 1,
+                          transform: 'scale(1)',
+                        },
+                      },
+                    }}
+                  />
+                ))}
+              </Box>
+
+              {/* Emoji Animados de Comida */}
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 2,
+                  fontSize: '24px',
+                  justifyContent: 'center',
+                  mt: 2,
+                }}
+              >
+                {['🍕', '🍔', '🍜'].map((emoji, idx) => (
+                  <Typography
+                    key={idx}
+                    sx={{
+                      animation: `float 3s ease-in-out infinite`,
+                      animationDelay: `${idx * 0.3}s`,
+                      '@keyframes float': {
+                        '0%, 100%': { transform: 'translateY(0px)' },
+                        '50%': { transform: 'translateY(-20px)' },
+                      },
+                    }}
+                  >
+                    {emoji}
+                  </Typography>
+                ))}
+              </Box>
+            </Box>
           ) : productosFiltrados.length === 0 ? (
             <Paper
               elevation={0}
