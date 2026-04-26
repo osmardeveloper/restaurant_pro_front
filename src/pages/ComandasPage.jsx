@@ -408,7 +408,7 @@ const ComandasPage = () => {
                                     onClick={() => verFactura(comanda)}
                                     sx={{ fontWeight: 600, cursor: 'pointer', color: '#0f3460', '&:hover': { textDecoration: 'underline' } }}
                                   >
-                                    Ver factura
+                                    Ver Factura #{comanda.id_factura?.numero_factura || '...'}
                                   </Link>
                                 </>
                               ) : (
@@ -644,10 +644,29 @@ const ComandasPage = () => {
                   </Box>
                 )}
 
+                {/* DOMICILIO */}
+                {facturaParaMostrar.a_domicilio && facturaParaMostrar.monto_domicilio > 0 && (
+                  <Box sx={{ mb: 2, pb: 2, borderBottom: '1px dashed rgba(0,0,0,0.2)' }}>
+                    <Typography variant="caption" fontWeight={700} color="#4caf50" sx={{ display: 'block', mb: 1 }}>🚚 DOMICILIO:</Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, ml: 1.5 }}>
+                      <Typography variant="caption">
+                        {facturaParaMostrar.metodo_pago_domicilio?.charAt(0).toUpperCase() + facturaParaMostrar.metodo_pago_domicilio?.slice(1) || 'Sin método'}
+                      </Typography>
+                      <Typography variant="caption" fontWeight={700} color="#4caf50">
+                        {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaParaMostrar.monto_domicilio)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #1a1a2e', pt: 1 }}>
                   <Typography variant="h6" fontWeight={900}>Total Pagado:</Typography>
                   <Typography variant="h6" fontWeight={900} color="#4caf50">
-                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaParaMostrar.total_pagado)}
+                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(
+                      (facturaParaMostrar.total_pagado || 0) +
+                      (facturaParaMostrar.propinas?.reduce((sum, p) => sum + (p.monto || 0), 0) || 0) +
+                      (facturaParaMostrar.a_domicilio && facturaParaMostrar.monto_domicilio ? facturaParaMostrar.monto_domicilio : 0)
+                    )}
                   </Typography>
                 </Box>
               </Box>

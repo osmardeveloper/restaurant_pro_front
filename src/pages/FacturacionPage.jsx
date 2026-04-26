@@ -1504,34 +1504,53 @@ const FacturacionPage = () => {
             </Typography>
           </Box>
 
-          {facturaFinal.propinas?.length > 0 && (
-            <>
-              <Box mt={1}>
-                <Typography fontSize="12px" fontWeight="bold">Propina</Typography>
-                {facturaFinal.propinas.map((propina, idx) => (
-                  <Box key={idx} display="flex" justifyContent="space-between">
-                    <Typography fontSize="12px">{propina.metodo_pago || 'Sin método'}</Typography>
+          {(facturaFinal.a_domicilio && facturaFinal.monto_domicilio > 0) || facturaFinal.propinas?.length > 0 ? (
+            <Box mt={1}>
+              {facturaFinal.a_domicilio && facturaFinal.monto_domicilio > 0 && (
+                <>
+                  <Typography fontSize="12px" fontWeight="bold">Domicilio</Typography>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography fontSize="12px">{facturaFinal.metodo_pago_domicilio || 'Sin método'}</Typography>
                     <Typography fontSize="12px">
-                      {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(propina.monto || 0)}
+                      {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.monto_domicilio || 0)}
                     </Typography>
                   </Box>
-                ))}
-                <Box display="flex" justifyContent="space-between" mt={0.5} pt={0.5} borderTop="1px dotted #000">
-                  <Typography fontSize="12px">Total propina</Typography>
-                  <Typography fontSize="12px">
-                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.propinas.reduce((sum, propina) => sum + (propina.monto || 0), 0))}
-                  </Typography>
-                </Box>
-              </Box>
-            </>
-          )}
+                  {facturaFinal.propinas?.length > 0 && (
+                    <Box sx={{ my: 0.5, pt: 0.5, borderTop: '1px dotted #000' }} />
+                  )}
+                </>
+              )}
+
+              {facturaFinal.propinas?.length > 0 && (
+                <>
+                  <Typography fontSize="12px" fontWeight="bold">Propina</Typography>
+                  {facturaFinal.propinas.map((propina, idx) => (
+                    <Box key={idx} display="flex" justifyContent="space-between">
+                      <Typography fontSize="12px">{propina.metodo_pago || 'Sin método'}</Typography>
+                      <Typography fontSize="12px">
+                        {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(propina.monto || 0)}
+                      </Typography>
+                    </Box>
+                  ))}
+                  <Box display="flex" justifyContent="space-between" mt={0.5} pt={0.5} borderTop="1px dotted #000">
+                    <Typography fontSize="12px">Total propina</Typography>
+                    <Typography fontSize="12px">
+                      {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.propinas.reduce((sum, propina) => sum + (propina.monto || 0), 0))}
+                    </Typography>
+                  </Box>
+                </>
+              )}
+            </Box>
+          ) : null}
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
           <Box display="flex" justifyContent="space-between" mb={2} p={1} sx={{ bgcolor: '#f5f5f5' }}>
             <Typography fontSize="14px" fontWeight="bold">TOTAL FINAL</Typography>
             <Typography fontSize="14px" fontWeight="bold">
               {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(
-                facturaFinal.total_pagado + (facturaFinal.propinas?.reduce((sum, propina) => sum + (propina.monto || 0), 0) || 0)
+                facturaFinal.total_pagado + 
+                (facturaFinal.monto_domicilio || 0) +
+                (facturaFinal.propinas?.reduce((sum, propina) => sum + (propina.monto || 0), 0) || 0)
               )}
             </Typography>
           </Box>
@@ -1992,12 +2011,29 @@ const TablaReporteFacturas = ({ facturas, enReproduccion, onDelete }) => {
                 </Box>
               </Box>
 
+              {/* Domicilio */}
+              {facturaDetalle.a_domicilio && facturaDetalle.monto_domicilio > 0 && (
+                <Box sx={{ mb: 2, border: '1px solid #4caf50', borderRadius: 2, p: 1.5, bgcolor: 'rgba(76,175,80,0.05)' }}>
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1, color: '#4caf50' }}>DOMICILIO</Typography>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                    <Chip label={facturaDetalle.metodo_pago_domicilio || 'Sin método'} size="small" variant="outlined" sx={{ textTransform: 'capitalize', borderColor: '#4caf50', color: '#4caf50' }} />
+                    <Typography variant="body2" fontWeight={800} color="#4caf50">
+                      {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaDetalle.monto_domicilio || 0)}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+
               {/* Total */}
               <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Box sx={{ bgcolor: '#1a1a2e', color: '#fff', px: 3, py: 1.5, borderRadius: 2, textAlign: 'right' }}>
                   <Typography variant="caption" sx={{ opacity: 0.7 }}>TOTAL PAGADO</Typography>
                   <Typography variant="h5" fontWeight={900} color="#e94560">
-                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaDetalle.total_pagado || 0)}
+                    {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(
+                      (facturaDetalle.total_pagado || 0) +
+                      (facturaDetalle.propinas?.reduce((sum, propina) => sum + (propina.monto || 0), 0) || 0) +
+                      (facturaDetalle.a_domicilio && facturaDetalle.monto_domicilio ? facturaDetalle.monto_domicilio : 0)
+                    )}
                   </Typography>
                 </Box>
               </Box>
