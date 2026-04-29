@@ -18,7 +18,6 @@ import ReceiptLongIcon    from '@mui/icons-material/ReceiptLong';
 import LogoutIcon         from '@mui/icons-material/Logout';
 import InventoryIcon      from '@mui/icons-material/Inventory';
 import LocalDiningIcon    from '@mui/icons-material/LocalDining';
-import DashboardIcon      from '@mui/icons-material/Dashboard';
 import AssignmentIndIcon  from '@mui/icons-material/AssignmentInd';
 import PostAddIcon        from '@mui/icons-material/PostAdd';
 import PointOfSaleIcon    from '@mui/icons-material/PointOfSale';
@@ -96,42 +95,16 @@ const Layout = () => {
 
   const drawerContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' }}>
-      <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <DashboardIcon sx={{ color: '#e94560', fontSize: 32 }} />
+      <Box sx={{ p: 2, pb: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 1.5, mb: 1 }}>
+        <Box component="img" src="/images/logo_la_perla.png" alt="Logo La Perla" sx={{ width: 150, height: 150, borderRadius: '20px', objectFit: 'cover', border: '5px solid #fff', mt: 1 }} />
         <Box>
-          <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700, lineHeight: 1.2 }}>
+          <Typography variant="body1" sx={{ color: '#fff', fontWeight: 700, lineHeight: 1.2, fontSize: '1.1rem' }}>
             RestaurantPro
-          </Typography>
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-            Sistema de Gestión
           </Typography>
         </Box>
       </Box>
 
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-
-      {usuario && (
-        <Box sx={{ p: 2, mx: 1, my: 1.5, borderRadius: 2, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Avatar sx={{ bgcolor: '#e94560', width: 36, height: 36, fontSize: 14 }}>
-              {usuario.nombre?.[0]?.toUpperCase()}
-            </Avatar>
-            <Box>
-              <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600 }}>
-                {usuario.nombre}
-              </Typography>
-              <Chip
-                label={rolLabel[usuario.rol] || usuario.rol}
-                size="small"
-                color={rolColor[usuario.rol] || 'default'}
-                sx={{ height: 18, fontSize: '0.65rem', mt: 0.3 }}
-              />
-            </Box>
-          </Box>
-        </Box>
-      )}
-
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 1 }} />
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.25)' }} />
 
       {loadingPermisos ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -195,6 +168,23 @@ const Layout = () => {
           <Typography variant="h6" sx={{ color: '#1a1a2e', fontWeight: 600, flex: 1 }}>
             {navItems.find(n => location.pathname.startsWith(n.path))?.label || 'RestaurantPro'}
           </Typography>
+          
+          {usuario && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: 1 }}>
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="body1" sx={{ color: '#1a1a2e', fontWeight: 700 }}>
+                  {usuario.nombre}
+                </Typography>
+                <Chip
+                  label={rolLabel[usuario.rol] || usuario.rol}
+                  size="small"
+                  color={rolColor[usuario.rol] || 'default'}
+                  sx={{ height: 20, fontSize: '0.75rem', mt: 0.5 }}
+                />
+              </Box>
+            </Box>
+          )}
+          
           <Tooltip title="Cerrar sesión">
             <IconButton onClick={handleLogout} sx={{ color: '#e94560' }}>
               <LogoutIcon />

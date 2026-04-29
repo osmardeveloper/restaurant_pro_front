@@ -41,6 +41,7 @@ const VentaDirectaPage = () => {
   
   const [form, setForm]                 = useState(FORM_INICIAL);
   const [selectedCliente, setSelectedCliente] = useState(null);
+  const [productosOriginalesIds, setProductosOriginalesIds] = useState([]); // IDs de productos que existían al abrir
   
   // Modal Crear Cliente Rápido
   const [openModalCliente, setOpenModalCliente] = useState(false);
@@ -100,6 +101,9 @@ const VentaDirectaPage = () => {
     setEditId(comanda._id);
     const productos = comanda.ids_productos || [];
     
+    // Guardar IDs de productos originales
+    setProductosOriginalesIds(productos.map(p => p._id));
+    
     let currentClient = null;
     if (comanda.id_cliente) {
        currentClient = clientes.find(c => c._id === comanda.id_cliente._id || c._id === comanda.id_cliente);
@@ -108,7 +112,7 @@ const VentaDirectaPage = () => {
     setSelectedCliente(currentClient || null);
     setForm({ 
       estado: 'pedido tomado',
-      pedido_actual: productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9) })),
+      pedido_actual: productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9), esOriginal: true })),
       comanda_id: comanda._id || null
     });
     setBusquedaProd('');
@@ -129,7 +133,7 @@ const VentaDirectaPage = () => {
   };
 
   const agregarProducto = (prod) => {
-    setForm(p => ({ ...p, pedido_actual: [...p.pedido_actual, { ...prod, uid: Math.random().toString(36).substr(2, 9) }] }));
+    setForm(p => ({ ...p, pedido_actual: [...p.pedido_actual, { ...prod, uid: Math.random().toString(36).substr(2, 9), esOriginal: false }] }));
   };
 
   const quitarProducto = (uid) => {
@@ -146,8 +150,7 @@ const VentaDirectaPage = () => {
         });
         showSnack('Venta Directa y pedido actualizados correctamente.');
       } 
-      setDialogOpen(false);
-      fetchData();
+      setDialogOpen(false);      setProductosOriginalesIds([]);      fetchData();
     } catch (err) {
       showSnack(err.response?.data?.message || 'Error al guardar la edición.', 'error');
     }
@@ -332,11 +335,9 @@ const VentaDirectaPage = () => {
                     )}
                   </Box>
                   <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', gap: 0.5 }}>
+                    <Tooltip title="Editar Venta Directa"><IconButton size="small" onClick={() => abrirEditar(comanda)} sx={{ color: '#4caf50' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
                     {usuario?.rol === 'admin' && (
-                      <>
-                        <Tooltip title="Editar Venta Directa"><IconButton size="small" onClick={() => abrirEditar(comanda)} sx={{ color: '#4caf50' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                        <Tooltip title="Eliminar Comanda"><IconButton size="small" onClick={() => abrirModalEliminar(comanda)} sx={{ color: '#e74c3c' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
-                      </>
+                      <Tooltip title="Eliminar Comanda"><IconButton size="small" onClick={() => abrirModalEliminar(comanda)} sx={{ color: '#e74c3c' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                     )}
                   </Box>
                 </CardActions>
@@ -347,7 +348,7 @@ const VentaDirectaPage = () => {
       )}
 
       {/* Modal Editar Venta Directa */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 3, minHeight: '80vh' } }}>
+      <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); setProductosOriginalesIds([]); }} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 3, minHeight: '80vh' } }}>
         <DialogTitle sx={{ background: 'linear-gradient(135deg, #4caf50, #388e3c)', color: '#fff', fontWeight: 700 }}>
           Editar Venta Directa
         </DialogTitle>
@@ -419,9 +420,13 @@ const VentaDirectaPage = () => {
                           {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio)}
                         </Typography>
                       </Box>
-                      <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)}>
-                        <DeleteIcon fontSize="inherit" />
-                      </IconButton>
+                      <Tooltip title={item.esOriginal && usuario?.rol !== 'admin' ? 'No puedes eliminar productos existentes' : ''}>
+                        <span>
+                          <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)} disabled={item.esOriginal && usuario?.rol !== 'admin'}>
+                            <DeleteIcon fontSize="inherit" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
                     </Box>
                   ))
                 )}
@@ -436,7 +441,7 @@ const VentaDirectaPage = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-          <Button onClick={() => setDialogOpen(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button onClick={() => { setDialogOpen(false); setProductosOriginalesIds([]); }} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
           <Button onClick={guardar} variant="contained" sx={{ borderRadius: 2, background: 'linear-gradient(135deg, #4caf50, #388e3c)' }}>Actualizar Venta</Button>
         </DialogActions>
       </Dialog>

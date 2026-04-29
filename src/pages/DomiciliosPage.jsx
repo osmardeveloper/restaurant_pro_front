@@ -46,6 +46,7 @@ const DomiciliosPage = () => {
   
   const [form, setForm]                 = useState(FORM_INICIAL);
   const [selectedCliente, setSelectedCliente] = useState(null);
+  const [productosOriginalesIds, setProductosOriginalesIds] = useState([]); // IDs de productos que existían al abrir
   
   // Modal Crear Cliente Rápido
   const [openModalCliente, setOpenModalCliente] = useState(false);
@@ -106,6 +107,9 @@ const DomiciliosPage = () => {
     setEditId(comanda._id);
     const productos = comanda.ids_productos || [];
     
+    // Guardar IDs de productos originales
+    setProductosOriginalesIds(productos.map(p => p._id));
+    
     // Carga de cliente si existe
     let currentClient = null;
     if (comanda.id_cliente) {
@@ -115,7 +119,7 @@ const DomiciliosPage = () => {
     setSelectedCliente(currentClient || null);
     setForm({ 
       estado: 'pedido tomado',
-      pedido_actual: productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9) })),
+      pedido_actual: productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9), esOriginal: true })),
       comanda_id: comanda._id || null,
       direccion_entrega: comanda.direccion_entrega || ''
     });
@@ -137,7 +141,7 @@ const DomiciliosPage = () => {
   };
 
   const agregarProducto = (prod) => {
-    setForm(p => ({ ...p, pedido_actual: [...p.pedido_actual, { ...prod, uid: Math.random().toString(36).substr(2, 9) }] }));
+    setForm(p => ({ ...p, pedido_actual: [...p.pedido_actual, { ...prod, uid: Math.random().toString(36).substr(2, 9), esOriginal: false }] }));
   };
 
   const quitarProducto = (uid) => {
@@ -158,6 +162,7 @@ const DomiciliosPage = () => {
         showSnack('Domicilio y pedido actualizados correctamente.');
       } 
       setDialogOpen(false);
+      setProductosOriginalesIds([]);
       fetchData();
     } catch (err) {
       showSnack(err.response?.data?.message || 'Error al guardar la edición.', 'error');
@@ -347,11 +352,9 @@ const DomiciliosPage = () => {
                     )}
                   </Box>
                   <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', gap: 0.5 }}>
+                    <Tooltip title="Editar Domicilio"><IconButton size="small" onClick={() => abrirEditar(comanda)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
                     {usuario?.rol === 'admin' && (
-                      <>
-                        <Tooltip title="Editar Domicilio"><IconButton size="small" onClick={() => abrirEditar(comanda)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                        <Tooltip title="Eliminar Comanda"><IconButton size="small" onClick={() => abrirModalEliminar(comanda)} sx={{ color: '#e74c3c' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
-                      </>
+                      <Tooltip title="Eliminar Comanda"><IconButton size="small" onClick={() => abrirModalEliminar(comanda)} sx={{ color: '#e74c3c' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                     )}
                   </Box>
                 </CardActions>
@@ -362,7 +365,7 @@ const DomiciliosPage = () => {
       )}
 
       {/* Modal Editar Domicilio */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 3, minHeight: '80vh' } }}>
+      <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); setProductosOriginalesIds([]); }} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 3, minHeight: '80vh' } }}>
         <DialogTitle sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', color: '#fff', fontWeight: 700 }}>
           Editar Domicilio
         </DialogTitle>
@@ -448,9 +451,13 @@ const DomiciliosPage = () => {
                           {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio)}
                         </Typography>
                       </Box>
-                      <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)}>
-                        <DeleteIcon fontSize="inherit" />
-                      </IconButton>
+                      <Tooltip title={item.esOriginal && usuario?.rol !== 'admin' ? 'No puedes eliminar productos existentes' : ''}>
+                        <span>
+                          <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)} disabled={item.esOriginal && usuario?.rol !== 'admin'}>
+                            <DeleteIcon fontSize="inherit" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
                     </Box>
                   ))
                 )}
@@ -465,7 +472,7 @@ const DomiciliosPage = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-          <Button onClick={() => setDialogOpen(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button onClick={() => { setDialogOpen(false); setProductosOriginalesIds([]); }} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
           <Button onClick={guardar} variant="contained" sx={{ borderRadius: 2, background: 'linear-gradient(135deg, #e94560, #c62a47)' }}>Actualizar</Button>
         </DialogActions>
       </Dialog>

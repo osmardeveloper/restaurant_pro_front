@@ -12,6 +12,7 @@ import LockIcon          from '@mui/icons-material/Lock';
 import VisibilityIcon    from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import RestaurantIcon    from '@mui/icons-material/Restaurant';
+import BrunchDiningIcon  from '@mui/icons-material/BrunchDining';
 import { authService }   from '../services/api';
 import { useAuth }       from '../context/AuthContext';
 
@@ -65,7 +66,7 @@ const LoginPage = () => {
         elevation={0}
         sx={{
           width: '100%',
-          maxWidth: 420,
+          maxWidth: 480,
           borderRadius: 4,
           background: 'rgba(255,255,255,0.05)',
           backdropFilter: 'blur(20px)',
@@ -73,14 +74,22 @@ const LoginPage = () => {
         }}
       >
         <CardContent sx={{ p: 4 }}>
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #e94560, #c62a47)', mb: 2, boxShadow: '0 8px 32px rgba(233,69,96,0.4)' }}>
-              <RestaurantIcon sx={{ color: '#fff', fontSize: 36 }} />
+          <Box sx={{ textAlign: 'center', mb: 2 }}>
+            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
+              <img src="/images/logo_la_perla.png" alt="Logo La Perla" style={{ maxWidth: 240, height: 'auto', borderRadius: '12px', border: '6px solid #fff' }} />
             </Box>
-            <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, letterSpacing: '-0.5px' }}>
-              RestaurantPro
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', mt: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}>
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #e94560, #c62a47)', boxShadow: '0 4px 16px rgba(233,69,96,0.3)' }}>
+                <RestaurantIcon sx={{ color: '#fff', fontSize: 24 }} />
+              </Box>
+              <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, letterSpacing: '-0.5px' }}>
+                RestaurantPro
+              </Typography>
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #e94560, #c62a47)', boxShadow: '0 4px 16px rgba(233,69,96,0.3)' }}>
+                <BrunchDiningIcon sx={{ color: '#fff', fontSize: 28, ml: -0.5 }} />
+              </Box>
+            </Box>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', mt: 1, mb: 2 }}>
               Inicia sesión para continuar
             </Typography>
           </Box>

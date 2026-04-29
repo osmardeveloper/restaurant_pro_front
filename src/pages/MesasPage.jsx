@@ -47,6 +47,7 @@ const MesasPage = () => {
   
   const [form, setForm]                 = useState(FORM_INICIAL);
   const [selectedCliente, setSelectedCliente] = useState(null);
+  const [productosOriginalesIds, setProductosOriginalesIds] = useState([]); // IDs de productos que existían al abrir
   
   // Modal Crear Cliente Rápido
   const [openModalCliente, setOpenModalCliente] = useState(false);
@@ -61,6 +62,12 @@ const MesasPage = () => {
 
   // Estado para impresión de comanda
   const [comandaParaImprimir, setComandaParaImprimir] = useState(null);
+
+  // Modal Eliminar Comanda
+  const [openEliminar, setOpenEliminar] = useState(false);
+  const [comandaAEliminar, setComandaAEliminar] = useState(null);
+  const [claveEliminar, setClaveEliminar] = useState('');
+  const CLAVE_MAESTRA = 'res2026';
 
   const [formErrors, setFormErrors]     = useState({});
   const [snack, setSnack]               = useState({ open: false, msg: '', severity: 'success' });
@@ -115,6 +122,9 @@ const MesasPage = () => {
     setEditId(mesa._id);
     const productos = mesa.pedido_actual?.ids_productos || [];
     
+    // Guardar IDs de productos originales
+    setProductosOriginalesIds(productos.map(p => p._id));
+    
     // Carga de cliente si existe
     let currentClient = null;
     if (mesa.pedido_actual?.id_cliente) {
@@ -125,7 +135,7 @@ const MesasPage = () => {
     setForm({ 
       numero_mesa: mesa.numero_mesa, 
       estado: mesa.estado, 
-      pedido_actual: productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9) })),
+      pedido_actual: productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9), esOriginal: true })),
       comanda_id: mesa.pedido_actual?._id || null
     });
     setBusquedaProd('');
@@ -146,7 +156,7 @@ const MesasPage = () => {
   };
 
   const agregarProducto = (prod) => {
-    setForm(p => ({ ...p, pedido_actual: [...p.pedido_actual, { ...prod, uid: Math.random().toString(36).substr(2, 9) }] }));
+    setForm(p => ({ ...p, pedido_actual: [...p.pedido_actual, { ...prod, uid: Math.random().toString(36).substr(2, 9), esOriginal: false }] }));
   };
 
   const quitarProducto = (uid) => {
@@ -181,6 +191,7 @@ const MesasPage = () => {
         showSnack('Mesa y pedido actualizados correctamente.');
       } 
       setDialogOpen(false);
+      setProductosOriginalesIds([]);
       fetchData();
     } catch (err) {
       showSnack(err.response?.data?.message || 'Error al guardar la edición.', 'error');
@@ -220,6 +231,32 @@ const MesasPage = () => {
     setTipoPropina('porcentaje');
     setValorPropina('');
     setOpenPropina(true);
+  };
+
+  const abrirModalEliminar = (mesa) => {
+    setComandaAEliminar(mesa.pedido_actual);
+    setClaveEliminar('');
+    setOpenEliminar(true);
+  };
+
+  const confirmarEliminarComanda = async () => {
+    if (!claveEliminar) {
+      showSnack('Ingresa la clave maestra.', 'warning');
+      return;
+    }
+    if (claveEliminar !== CLAVE_MAESTRA) {
+      showSnack('Clave maestra incorrecta.', 'error');
+      return;
+    }
+    try {
+      await comandaService.remove(comandaAEliminar._id, claveEliminar);
+      showSnack('Comanda de mesa eliminada correctamente.', 'success');
+      setOpenEliminar(false);
+      setClaveEliminar('');
+      fetchData();
+    } catch (err) {
+      showSnack(err.response?.data?.message || 'Error al eliminar la comanda.', 'error');
+    }
   };
 
   const imprimirCuentaConPropina = () => {
@@ -360,15 +397,11 @@ const MesasPage = () => {
                       </>
                     )}
                   </Box>
-                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
+                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-start', gap: 0.5 }}>
+                    <Tooltip title="Editar Estado y Comanda"><IconButton id={`edit-mesa-${mesa._id}`} size="small" onClick={() => abrirEditar(mesa)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
                     {usuario?.rol === 'admin' && (
-                      <Tooltip title="Editar Estado y Comanda"><IconButton id={`edit-mesa-${mesa._id}`} size="small" onClick={() => abrirEditar(mesa)} sx={{ color: '#0f3460' }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="Eliminar Comanda"><IconButton size="small" onClick={() => abrirModalEliminar(mesa)} sx={{ color: '#e74c3c' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
                     )}
-                    {/* DESHABILITADO TEMPORALMENTE - No se eliminarán mesas por ahora
-                    {usuario?.rol === 'admin' && (
-                      <Tooltip title="Eliminar"><IconButton id={`delete-mesa-${mesa._id}`} size="small" onClick={() => setDeleteDialog({ open: true, id: mesa._id, numero: mesa.numero_mesa })} sx={{ color: '#e94560' }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
-                    )}
-                    */}
                   </Box>
                 </CardActions>
               </Card>
@@ -378,7 +411,7 @@ const MesasPage = () => {
       )}
 
       {/* Modal Crear/Editar Mesa */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 3, minHeight: '80vh' } }}>
+      <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); setProductosOriginalesIds([]); }} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 3, minHeight: '80vh' } }}>
         <DialogTitle sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', color: '#fff', fontWeight: 700 }}>
           {editId ? `Editar Mesa #${form.numero_mesa}` : 'Nueva Mesa'}
         </DialogTitle>
@@ -465,9 +498,13 @@ const MesasPage = () => {
                           {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio)}
                         </Typography>
                       </Box>
-                      <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)}>
-                        <DeleteIcon fontSize="inherit" />
-                      </IconButton>
+                      <Tooltip title={item.esOriginal && usuario?.rol !== 'admin' ? 'No puedes eliminar productos existentes' : ''}>
+                        <span>
+                          <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)} disabled={item.esOriginal && usuario?.rol !== 'admin'}>
+                            <DeleteIcon fontSize="inherit" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
                     </Box>
                   ))
                 )}
@@ -521,6 +558,27 @@ const MesasPage = () => {
         <DialogActions sx={{ px: 3, pb: 3 }}>
           <Button onClick={() => setOpenModalCliente(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
           <Button onClick={guardarCliente} variant="contained" sx={{ borderRadius: 2, background: '#1a1a2e' }}>Guardar y Seleccionar</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Modal Eliminar Comanda */}
+      <Dialog open={openEliminar} onClose={() => setOpenEliminar(false)} sx={{ '& .MuiDialog-paper': { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 700, color: '#e74c3c' }}>Eliminar Comanda</DialogTitle>
+        <DialogContent sx={{ minWidth: 400, py: 2 }}>
+          <Typography variant="body2" sx={{ mb: 2 }}>Ingresa la clave maestra para eliminar esta comanda.</Typography>
+          <TextField 
+            fullWidth 
+            type="password" 
+            label="Clave Maestra" 
+            value={claveEliminar}
+            onChange={e => setClaveEliminar(e.target.value)}
+            placeholder="Ingresa la clave"
+            size="small"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenEliminar(false)} variant="outlined" sx={{ borderRadius: 2 }}>Cancelar</Button>
+          <Button onClick={confirmarEliminarComanda} variant="contained" color="error" sx={{ borderRadius: 2 }}>Eliminar</Button>
         </DialogActions>
       </Dialog>
 
