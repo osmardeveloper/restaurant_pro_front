@@ -44,6 +44,7 @@ const TomarPedidoPage = () => {
   const [carrito,         setCarrito]         = useState([]);
   const [a_domicilio,     setA_domicilio]     = useState(false);
   const [venta_directa,   setVenta_directa]   = useState(false);
+  const [observaciones,   setObservaciones]   = useState('');
   
   const [busquedaProd, setBusquedaProd] = useState('');
   const [categoria, setCategoria] = useState('todas');
@@ -145,7 +146,8 @@ const TomarPedidoPage = () => {
         ids_productos: carrito.map(p => p._id),
         a_domicilio: a_domicilio,
         venta_directa: venta_directa,
-        direccion_entrega: selectedCliente?.direccion || ''
+        direccion_entrega: selectedCliente?.direccion || '',
+        observaciones
       };
       await comandaService.create(datos);
       
@@ -156,7 +158,8 @@ const TomarPedidoPage = () => {
         productos: [...carrito],
         fecha: new Date().toLocaleString(),
         a_domicilio: a_domicilio,
-        venta_directa: venta_directa
+        venta_directa: venta_directa,
+        observaciones
       });
 
       // Abrir modal de éxito
@@ -175,6 +178,7 @@ const TomarPedidoPage = () => {
     setSelectedCliente(null);
     setSelectedMesa(null);
     setCarrito([]);
+    setObservaciones('');
     setOpenModalExito(false);
     setComandaParaImprimir(null);
   };
@@ -396,6 +400,16 @@ const TomarPedidoPage = () => {
             </List>
 
             <Box sx={{ p: 3, background: '#fafafa', borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+              <TextField
+                fullWidth
+                multiline
+                minRows={3}
+                label="Observaciones"
+                placeholder='Ej: "el menú ejecutivo va sin arroz"'
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
+                sx={{ mb: 2 }}
+              />
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="subtitle1" fontWeight={600}>Total:</Typography>
                 <Typography variant="h5" fontWeight={800} color="#e94560">
@@ -557,6 +571,12 @@ const TomarPedidoPage = () => {
             ))}
           </Box>
 
+          {comandaParaImprimir.observaciones ? (
+            <Box sx={{ mt: 1, p: 1, border: '1px dashed #000', borderRadius: 1 }}>
+              <Typography fontSize="13px"><strong>Observaciones:</strong> {comandaParaImprimir.observaciones}</Typography>
+            </Box>
+          ) : null}
+
           <Box mt={3} textAlign="center">
             <Typography fontSize="14px">--------------------------------</Typography>
             <Typography fontSize="12px" sx={{ fontStyle: 'italic' }}>Sistema de Gestión de Restaurante</Typography>
@@ -572,4 +592,3 @@ const TomarPedidoPage = () => {
 };
 
 export default TomarPedidoPage;
-

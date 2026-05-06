@@ -46,6 +46,7 @@ const ComandasPage = () => {
   const [editId, setEditId]              = useState(null);
   const [busquedaProd, setBusquedaProd]  = useState('');
   const [pedidoActual, setPedidoActual]  = useState([]);
+  const [observaciones, setObservaciones] = useState('');
 
   // Modal Ver Factura
   const [modalFacturaOpen, setModalFacturaOpen] = useState(false);
@@ -88,6 +89,7 @@ const ComandasPage = () => {
     setEditId(comanda._id);
     const productos = comanda.ids_productos || [];
     setPedidoActual(productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9) })));
+    setObservaciones(comanda.observaciones || '');
     setBusquedaProd('');
     setDialogOpen(true);
   };
@@ -173,7 +175,10 @@ const ComandasPage = () => {
   const guardarEdicion = async () => {
     if (!editId) return;
     try {
-      await comandaService.update(editId, { ids_productos: pedidoActual.map(p => p._id) });
+      await comandaService.update(editId, {
+        ids_productos: pedidoActual.map(p => p._id),
+        observaciones: observaciones || ''
+      });
       setSnack({ open: true, msg: 'Comanda actualizada exitosamente.', severity: 'success' });
       setDialogOpen(false);
       fetchDatos();
@@ -194,7 +199,8 @@ const ComandasPage = () => {
       productos: comanda.ids_productos || [],
       fecha: new Date(comanda.createdAt).toLocaleString('es-MX'),
       a_domicilio: comanda.a_domicilio || false,
-      venta_directa: comanda.venta_directa || false
+      venta_directa: comanda.venta_directa || false,
+      observaciones: comanda.observaciones || ''
     });
 
     setTimeout(() => {
@@ -342,11 +348,12 @@ const ComandasPage = () => {
             <TableContainer>
               <Table>
                 <TableHead>
-                  <TableRow sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }}>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Mesa</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Cliente</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Productos</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Fecha / Hora</TableCell>
+                    <TableRow sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }}>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Mesa</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Cliente</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Productos</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Observaciones</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 700 }}>Fecha / Hora</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 700, textAlign: 'center' }}>Facturada</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 700, textAlign: 'center' }}>Comanda</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 700, textAlign: 'center' }}>Cuenta</TableCell>
@@ -356,7 +363,7 @@ const ComandasPage = () => {
                 <TableBody>
                   {paginadas.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ py: 8, color: 'text.secondary' }}>
+                      <TableCell colSpan={9} align="center" sx={{ py: 8, color: 'text.secondary' }}>
                         <ReceiptLongIcon sx={{ fontSize: 48, mb: 1, opacity: 0.3, display: 'block', mx: 'auto' }} />
                         No hay comandas registradas aún.
                       </TableCell>
@@ -391,6 +398,11 @@ const ComandasPage = () => {
                                 ))
                               )}
                             </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" color={comanda.observaciones ? 'text.primary' : 'text.secondary'} sx={{ maxWidth: 220 }}>
+                              {comanda.observaciones || 'Sin observaciones'}
+                            </Typography>
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2" color="text.secondary">
@@ -526,6 +538,17 @@ const ComandasPage = () => {
                     </Box>
                   ))
                 )}
+              </Box>
+              <Box sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  label="Observaciones"
+                  placeholder='Ej: "el menú ejecutivo va sin arroz"'
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                />
               </Box>
               <Box sx={{ p: 2, bgcolor: '#1a1a2e', color: '#fff' }}>
                 <Typography variant="caption" sx={{ opacity: 0.8 }}>Total Comanda</Typography>
@@ -868,6 +891,13 @@ const ComandasPage = () => {
               </Box>
             ))}
           </Box>
+
+          {comandaParaImprimir.observaciones ? (
+            <Box sx={{ mt: 1, mb: 1, p: 1, border: '1px dashed #000', borderRadius: 1 }}>
+              <Typography fontSize="13px" fontWeight="bold">OBSERVACIONES</Typography>
+              <Typography fontSize="13px">{comandaParaImprimir.observaciones}</Typography>
+            </Box>
+          ) : null}
 
           <Box mt={3} textAlign="center">
             <Typography fontSize="14px">--------------------------------</Typography>

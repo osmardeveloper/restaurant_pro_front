@@ -113,7 +113,8 @@ const VentaDirectaPage = () => {
     setForm({ 
       estado: 'pedido tomado',
       pedido_actual: productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9), esOriginal: true })),
-      comanda_id: comanda._id || null
+      comanda_id: comanda._id || null,
+      observaciones: comanda.observaciones || ''
     });
     setBusquedaProd('');
     setFormErrors({});
@@ -146,7 +147,8 @@ const VentaDirectaPage = () => {
       if (editId) {
         await comandaService.update(editId, { 
           ids_productos: form.pedido_actual.map(p => p._id),
-          id_cliente: selectedCliente ? selectedCliente._id : null
+          id_cliente: selectedCliente ? selectedCliente._id : null,
+          observaciones: form.observaciones || ''
         });
         showSnack('Venta Directa y pedido actualizados correctamente.');
       } 
@@ -220,7 +222,8 @@ const VentaDirectaPage = () => {
       productos: comanda.ids_productos || [],
       fecha: new Date().toLocaleString('es-MX'),
       venta_directa: true,
-      mesa: 'Venta Directa'
+      mesa: 'Venta Directa',
+      observaciones: comanda.observaciones || ''
     });
 
     setTimeout(() => {
@@ -405,6 +408,17 @@ const VentaDirectaPage = () => {
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa' }}>
               <Box sx={{ p: 2, bgcolor: '#f0f0f0', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
                 <Typography variant="subtitle2" fontWeight={700}>Productos del Pedido</Typography>
+              </Box>
+              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  label="Observaciones"
+                  placeholder='Ej: "el menú ejecutivo va sin arroz"'
+                  value={form.observaciones || ''}
+                  onChange={(e) => setForm(p => ({ ...p, observaciones: e.target.value }))}
+                />
               </Box>
               <Box sx={{ flex: 1, overflowY: 'auto' }}>
                 {form.pedido_actual.length === 0 ? (
@@ -656,6 +670,12 @@ const VentaDirectaPage = () => {
               </Box>
             ))}
           </Box>
+
+          {comandaParaImprimir.observaciones ? (
+            <Box sx={{ mt: 1, p: 1, border: '1px dashed #000', borderRadius: 1 }}>
+              <Typography fontSize="13px"><strong>Observaciones:</strong> {comandaParaImprimir.observaciones}</Typography>
+            </Box>
+          ) : null}
 
           <Box mt={3} textAlign="center">
             <Typography fontSize="14px">--------------------------------</Typography>
