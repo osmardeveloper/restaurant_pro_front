@@ -10,6 +10,7 @@ import {
   Select, MenuItem, FormControl, InputLabel, Autocomplete
 } from '@mui/material';
 import AddIcon          from '@mui/icons-material/Add';
+import RemoveIcon       from '@mui/icons-material/Remove';
 import EditIcon         from '@mui/icons-material/Edit';
 import DeleteIcon       from '@mui/icons-material/Delete';
 import StorefrontIcon   from '@mui/icons-material/Storefront';
@@ -18,6 +19,7 @@ import PersonAddIcon    from '@mui/icons-material/PersonAdd';
 import PrintIcon        from '@mui/icons-material/Print';
 import { productoService, comandaService, clienteService, facturacionService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { agruparLineasPedido, calcularTotalLineasPedido, expandirLineasPedido, formatearObservacion, normalizarLineasPedido } from '../utils/comandaItems';
 
 const TIPOS_DOCUMENTO = [
   { value: 'cedula_identidad', label: 'Cédula de Identidad' },
@@ -42,6 +44,7 @@ const VentaDirectaPage = () => {
   const [form, setForm]                 = useState(FORM_INICIAL);
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [productosOriginalesIds, setProductosOriginalesIds] = useState([]); // IDs de productos que existían al abrir
+  const [observacionActiva, setObservacionActiva] = useState(null);
   
   // Modal Crear Cliente Rápido
   const [openModalCliente, setOpenModalCliente] = useState(false);
@@ -99,10 +102,10 @@ const VentaDirectaPage = () => {
 
   const abrirEditar = (comanda) => {
     setEditId(comanda._id);
-    const productos = comanda.ids_productos || [];
+    const productos = normalizarLineasPedido(comanda.ids_productos || []);
     
     // Guardar IDs de productos originales
-    setProductosOriginalesIds(productos.map(p => p._id));
+    setProductosOriginalesIds(productos.map(p => p.id_producto));
     
     let currentClient = null;
     if (comanda.id_cliente) {
@@ -114,8 +117,8 @@ const VentaDirectaPage = () => {
       estado: 'pedido tomado',
       pedido_actual: productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9), esOriginal: true })),
       comanda_id: comanda._id || null,
-      observaciones: comanda.observaciones || ''
     });
+    setObservacionActiva(null);
     setBusquedaProd('');
     setFormErrors({});
     setDialogOpen(true);
@@ -124,7 +127,7 @@ const VentaDirectaPage = () => {
   const irAFacturar = (comanda) => {
     navigate('/facturacion', {
       state: {
-        productos: comanda.ids_productos || [],
+        productos: expandirLineasPedido(comanda.ids_productos || []),
         cliente: comanda.id_cliente || null,
         comandaId: comanda._id,
         venta_directa: true,
@@ -134,11 +137,42 @@ const VentaDirectaPage = () => {
   };
 
   const agregarProducto = (prod) => {
-    setForm(p => ({ ...p, pedido_actual: [...p.pedido_actual, { ...prod, uid: Math.random().toString(36).substr(2, 9), esOriginal: false }] }));
+    setForm(p => {
+      const idx = p.pedido_actual.findIndex(item => item.id_producto === prod._id && !item.observacion);
+      if (idx >= 0) {
+        const siguiente = [...p.pedido_actual];
+        siguiente[idx] = { ...siguiente[idx], cantidad: (siguiente[idx].cantidad || 1) + 1 };
+        return { ...p, pedido_actual: siguiente };
+      }
+      return {
+        ...p,
+        pedido_actual: [...p.pedido_actual, { ...prod, uid: Math.random().toString(36).substr(2, 9), esOriginal: false, id_producto: prod._id, cantidad: 1, observacion: '' }],
+      };
+    });
   };
 
   const quitarProducto = (uid) => {
     setForm(p => ({ ...p, pedido_actual: p.pedido_actual.filter(item => item.uid !== uid) }));
+  };
+
+  const incrementarCantidad = (uid) => {
+    setForm(p => ({ ...p, pedido_actual: p.pedido_actual.map(item => item.uid === uid ? { ...item, cantidad: (item.cantidad || 1) + 1 } : item) }));
+  };
+
+  const decrementarCantidad = (uid) => {
+    setForm(p => ({
+      ...p,
+      pedido_actual: p.pedido_actual.flatMap(item => {
+        if (item.uid !== uid) return [item];
+        const cantidad = Number(item.cantidad || 1);
+        if (cantidad <= 1) return [];
+        return [{ ...item, cantidad: cantidad - 1 }];
+      })
+    }));
+  };
+
+  const actualizarObservacion = (uid, observacion) => {
+    setForm(p => ({ ...p, pedido_actual: p.pedido_actual.map(item => item.uid === uid ? { ...item, observacion } : item) }));
   };
 
   const guardar = async () => {
@@ -146,9 +180,12 @@ const VentaDirectaPage = () => {
     try {
       if (editId) {
         await comandaService.update(editId, { 
-          ids_productos: form.pedido_actual.map(p => p._id),
+          ids_productos: form.pedido_actual.map(p => ({
+            id_producto: p.id_producto,
+            cantidad: p.cantidad || 1,
+            observacion: p.observacion || ''
+          })),
           id_cliente: selectedCliente ? selectedCliente._id : null,
-          observaciones: form.observaciones || ''
         });
         showSnack('Venta Directa y pedido actualizados correctamente.');
       } 
@@ -184,14 +221,14 @@ const VentaDirectaPage = () => {
       return;
     }
 
-    const totalPedido = comandaPropina.ids_productos.reduce((acc, p) => acc + (p.precio || 0), 0);
+    const totalPedido = calcularTotalLineasPedido(comandaPropina.ids_productos || []);
     const montoPropina = tipoPropina === 'porcentaje' 
       ? (totalPedido * Number(valorPropina)) / 100 
       : Number(valorPropina);
 
     // Preparar datos para imprimir recibo (sin crear factura)
     setReciboDatos({
-      productos: comandaPropina.ids_productos,
+      productos: agruparLineasPedido(comandaPropina.ids_productos || []),
       totalPedido,
       montoPropina,
       tipoPropina,
@@ -219,11 +256,10 @@ const VentaDirectaPage = () => {
 
     setComandaParaImprimir({
       cliente: clienteInfo,
-      productos: comanda.ids_productos || [],
+      productos: agruparLineasPedido(comanda.ids_productos || []),
       fecha: new Date().toLocaleString('es-MX'),
       venta_directa: true,
       mesa: 'Venta Directa',
-      observaciones: comanda.observaciones || ''
     });
 
     setTimeout(() => {
@@ -289,9 +325,9 @@ const VentaDirectaPage = () => {
         <Grid container spacing={2}>
           {comandas.map((comanda) => {
             const hasPedido = !!comanda.ids_productos;
-            const productosPedido = hasPedido ? comanda.ids_productos : [];
-            const productosLength = productosPedido.length;
-            const totalPedido = productosPedido.reduce((acc, producto) => acc + (producto.precio || 0), 0);
+            const productosPedido = hasPedido ? agruparLineasPedido(comanda.ids_productos || []) : [];
+            const productosLength = productosPedido.reduce((acc, producto) => acc + (producto.cantidad || 1), 0);
+            const totalPedido = calcularTotalLineasPedido(comanda.ids_productos || []);
             return (
             <Grid item xs={12} sm={6} md={4} lg={3} key={comanda._id}>
               <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }, borderTop: '4px solid #4caf50' }}>
@@ -317,7 +353,7 @@ const VentaDirectaPage = () => {
                     </Box>
                   )}
                   {hasPedido && productosPedido.slice(0, 3).map((plato, idx) => (
-                    <Chip key={plato._id ? `${plato._id}-${idx}` : idx} label={plato.nombre || 'Producto'} size="small" variant="outlined" sx={{ mr: 0.5, mb: 0.5, fontSize: '0.7rem' }} />
+                    <Chip key={plato.uid || `${plato.id_producto}-${idx}`} label={`${plato.cantidad || 1}x ${plato.nombre || 'Producto'}`} size="small" variant="outlined" sx={{ mr: 0.5, mb: 0.5, fontSize: '0.7rem' }} />
                   ))}
                   {productosLength > 3 && <Chip label={`+${productosLength - 3} más`} size="small" sx={{ fontSize: '0.7rem' }} />}
                 </CardContent>
@@ -409,17 +445,6 @@ const VentaDirectaPage = () => {
               <Box sx={{ p: 2, bgcolor: '#f0f0f0', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
                 <Typography variant="subtitle2" fontWeight={700}>Productos del Pedido</Typography>
               </Box>
-              <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-                <TextField
-                  fullWidth
-                  multiline
-                  minRows={3}
-                  label="Observaciones"
-                  placeholder='Ej: "el menú ejecutivo va sin arroz"'
-                  value={form.observaciones || ''}
-                  onChange={(e) => setForm(p => ({ ...p, observaciones: e.target.value }))}
-                />
-              </Box>
               <Box sx={{ flex: 1, overflowY: 'auto' }}>
                 {form.pedido_actual.length === 0 ? (
                   <Typography variant="body2" color="text.secondary" textAlign="center" mt={4}>
@@ -427,20 +452,56 @@ const VentaDirectaPage = () => {
                   </Typography>
                 ) : (
                   form.pedido_actual.map((item, index) => (
-                    <Box key={item.uid || index} sx={{ display: 'flex', alignItems: 'center', p: 1.5, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                      <Box sx={{ flex: 1, overflow: 'hidden' }}>
-                        <Typography variant="body2" fontWeight={600} noWrap>{item.nombre}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio)}
-                        </Typography>
-                      </Box>
-                      <Tooltip title={item.esOriginal && usuario?.rol !== 'admin' ? 'No puedes eliminar productos existentes' : ''}>
-                        <span>
-                          <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)} disabled={item.esOriginal && usuario?.rol !== 'admin'}>
-                            <DeleteIcon fontSize="inherit" />
+                    <Box key={item.uid || index} sx={{ p: 1.5, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Box sx={{ flex: 1, overflow: 'hidden' }}>
+                          <Typography variant="body2" fontWeight={600} noWrap>{item.nombre}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio)}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Subtotal: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format((item.precio || 0) * (item.cantidad || 1))}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                          <IconButton size="small" color="primary" onClick={() => decrementarCantidad(item.uid)}>
+                            <RemoveIcon fontSize="inherit" />
                           </IconButton>
-                        </span>
-                      </Tooltip>
+                          <Typography variant="caption" sx={{ minWidth: 18, textAlign: 'center', fontWeight: 700 }}>
+                            {item.cantidad || 1}
+                          </Typography>
+                          <IconButton size="small" color="primary" onClick={() => incrementarCantidad(item.uid)}>
+                            <AddIcon fontSize="inherit" />
+                          </IconButton>
+                          <IconButton size="small" color={item.observacion ? 'secondary' : 'default'} onClick={() => setObservacionActiva(prev => prev === item.uid ? null : item.uid)}>
+                            <EditIcon fontSize="inherit" />
+                          </IconButton>
+                          <Tooltip title={item.esOriginal && usuario?.rol !== 'admin' ? 'No puedes eliminar productos existentes' : ''}>
+                            <span>
+                              <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)} disabled={item.esOriginal && usuario?.rol !== 'admin'}>
+                                <DeleteIcon fontSize="inherit" />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        </Box>
+                      </Box>
+                      {observacionActiva === item.uid && (
+                        <Box sx={{ mt: 1 }}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Observación del producto"
+                            placeholder='Ej: "sin arroz, sin ensalada"'
+                            value={item.observacion || ''}
+                            onChange={(e) => actualizarObservacion(item.uid, e.target.value)}
+                          />
+                        </Box>
+                      )}
+                      {item.observacion && (
+                        <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: 'text.secondary' }}>
+                          ({formatearObservacion(item.observacion)})
+                        </Typography>
+                      )}
                     </Box>
                   ))
                 )}
@@ -664,18 +725,19 @@ const VentaDirectaPage = () => {
 
           <Box mb={2}>
             {comandaParaImprimir.productos.map((item, i) => (
-              <Box key={i} sx={{ display: 'flex', mb: 0.5 }}>
-                <Typography fontSize="14px" sx={{ fontWeight: 'bold', mr: 1 }}>1x</Typography>
-                <Typography fontSize="14px" sx={{ textTransform: 'uppercase' }}>{item.nombre}</Typography>
+              <Box key={i} sx={{ mb: 0.75 }}>
+                <Box sx={{ display: 'flex' }}>
+                  <Typography fontSize="14px" sx={{ fontWeight: 'bold', mr: 1 }}>{item.cantidad || 1}x</Typography>
+                  <Typography fontSize="14px" sx={{ textTransform: 'uppercase' }}>{item.nombre}</Typography>
+                </Box>
+                {item.observacion ? (
+                  <Typography fontSize="12px" sx={{ ml: 3 }}>
+                    ({formatearObservacion(item.observacion)})
+                  </Typography>
+                ) : null}
               </Box>
             ))}
           </Box>
-
-          {comandaParaImprimir.observaciones ? (
-            <Box sx={{ mt: 1, p: 1, border: '1px dashed #000', borderRadius: 1 }}>
-              <Typography fontSize="13px"><strong>Observaciones:</strong> {comandaParaImprimir.observaciones}</Typography>
-            </Box>
-          ) : null}
 
           <Box mt={3} textAlign="center">
             <Typography fontSize="14px">--------------------------------</Typography>

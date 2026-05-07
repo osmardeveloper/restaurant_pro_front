@@ -8,6 +8,9 @@ import {
   Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Chip,
   InputAdornment, Card, CardContent, CardActionArea, Tooltip, Switch, FormControlLabel
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon       from '@mui/icons-material/Delete';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
 import PostAddIcon      from '@mui/icons-material/PostAdd';
@@ -15,6 +18,7 @@ import PersonAddIcon    from '@mui/icons-material/PersonAdd';
 import SearchIcon       from '@mui/icons-material/Search';
 import PrintIcon        from '@mui/icons-material/Print';
 import { clienteService, mesaService, productoService, comandaService, categoriasProductosService } from '../services/api';
+import { agruparLineasPedido, calcularTotalLineasPedido, formatearObservacion } from '../utils/comandaItems';
 
 const TIPOS_DOCUMENTO = [
   { value: 'cedula_identidad', label: 'Cédula de Identidad' },
@@ -44,7 +48,7 @@ const TomarPedidoPage = () => {
   const [carrito,         setCarrito]         = useState([]);
   const [a_domicilio,     setA_domicilio]     = useState(false);
   const [venta_directa,   setVenta_directa]   = useState(false);
-  const [observaciones,   setObservaciones]   = useState('');
+  const [observacionActiva, setObservacionActiva] = useState(null);
   
   const [busquedaProd, setBusquedaProd] = useState('');
   const [categoria, setCategoria] = useState('todas');
@@ -91,14 +95,52 @@ const TomarPedidoPage = () => {
     fetchCategorias();
   }, []);
 
+  const crearLineaPedido = (prod) => ({
+    uid: Math.random().toString(36).substr(2, 9),
+    id_producto: prod._id,
+    producto: prod,
+    nombre: prod.nombre,
+    precio: prod.precio,
+    costo: prod.costo ?? null,
+    cantidad: 1,
+    observacion: '',
+  });
+
   // Agregar al carrito
   const agregarProducto = (prod) => {
-    setCarrito(prev => [...prev, { ...prod, uid: Math.random().toString(36).substr(2, 9) }]);
+    setCarrito(prev => {
+      const idx = prev.findIndex(item => item.id_producto === prod._id && !item.observacion);
+      const idxConObservacion = prev.findIndex(item => item.id_producto === prod._id);
+      const indiceObjetivo = idx >= 0 ? idx : idxConObservacion;
+      if (indiceObjetivo >= 0) {
+        const siguiente = [...prev];
+        siguiente[indiceObjetivo] = { ...siguiente[indiceObjetivo], cantidad: (siguiente[indiceObjetivo].cantidad || 1) + 1 };
+        return siguiente;
+      }
+      return [...prev, crearLineaPedido(prod)];
+    });
   };
 
   // Quitar del carrito
   const quitarProducto = (uid) => {
     setCarrito(prev => prev.filter(item => item.uid !== uid));
+  };
+
+  const incrementarCantidad = (uid) => {
+    setCarrito(prev => prev.map(item => item.uid === uid ? { ...item, cantidad: (item.cantidad || 1) + 1 } : item));
+  };
+
+  const decrementarCantidad = (uid) => {
+    setCarrito(prev => prev.flatMap(item => {
+      if (item.uid !== uid) return [item];
+      const cantidad = Number(item.cantidad || 1);
+      if (cantidad <= 1) return [];
+      return [{ ...item, cantidad: cantidad - 1 }];
+    }));
+  };
+
+  const actualizarObservacion = (uid, observacion) => {
+    setCarrito(prev => prev.map(item => item.uid === uid ? { ...item, observacion } : item));
   };
 
   // Crear Cliente Rápido
@@ -143,11 +185,14 @@ const TomarPedidoPage = () => {
       const datos = {
         id_mesa: selectedMesa ? selectedMesa._id : undefined,
         id_cliente: selectedCliente ? selectedCliente._id : undefined,
-        ids_productos: carrito.map(p => p._id),
+        ids_productos: carrito.map(p => ({
+          id_producto: p.id_producto,
+          cantidad: p.cantidad || 1,
+          observacion: p.observacion || '',
+        })),
         a_domicilio: a_domicilio,
         venta_directa: venta_directa,
         direccion_entrega: selectedCliente?.direccion || '',
-        observaciones
       };
       await comandaService.create(datos);
       
@@ -155,11 +200,10 @@ const TomarPedidoPage = () => {
       setComandaParaImprimir({
         mesa: selectedMesa ? selectedMesa.numero_mesa : (a_domicilio ? 'Domicilio' : 'Venta Directa'),
         cliente: selectedCliente ? `${selectedCliente.nombre} ${selectedCliente.apellido}` : 'Consumidor Final',
-        productos: [...carrito],
+        productos: agruparLineasPedido(carrito),
         fecha: new Date().toLocaleString(),
         a_domicilio: a_domicilio,
         venta_directa: venta_directa,
-        observaciones
       });
 
       // Abrir modal de éxito
@@ -178,7 +222,7 @@ const TomarPedidoPage = () => {
     setSelectedCliente(null);
     setSelectedMesa(null);
     setCarrito([]);
-    setObservaciones('');
+    setObservacionActiva(null);
     setOpenModalExito(false);
     setComandaParaImprimir(null);
   };
@@ -189,7 +233,7 @@ const TomarPedidoPage = () => {
     }, 300);
   };
 
-  const total = carrito.reduce((acc, curr) => acc + (curr.precio || 0), 0);
+  const total = calcularTotalLineasPedido(carrito);
   const prodFiltrados = productos.filter(p => {
     const matchBusqueda = (p.nombre || '').toLowerCase().includes((busquedaProd || '').toLowerCase());
     const matchCategoria = categoria === 'todas' || p.tipo === categoria;
@@ -362,7 +406,7 @@ const TomarPedidoPage = () => {
         </Box>
 
         {/* Columna Derecha: Carrito */}
-        <Box sx={{ width: 340, flexShrink: 0, position: 'sticky', top: 84 }}>
+        <Box sx={{ width: 388, flexShrink: 0, position: 'sticky', top: 84 }}>
           <Paper elevation={0} sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 180px)', minHeight: 400, borderRadius: 3, border: '1px solid', borderColor: selectedMesa ? 'rgba(0,0,0,0.08)' : 'warning.main', overflow: 'hidden' }}>
             <Box sx={{ p: 2, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', color: '#fff' }}>
                <Typography variant="h6" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -385,14 +429,66 @@ const TomarPedidoPage = () => {
                     <ListItem>
                       <ListItemText 
                         primary={<Typography variant="body2" fontWeight={600}>{item.nombre}</Typography>} 
-                        secondary={<Typography variant="caption" color="text.secondary">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio)}</Typography>} 
+                        secondary={
+                          <Box>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio)}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              Subtotal: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format((item.precio || 0) * (item.cantidad || 1))}
+                            </Typography>
+                          </Box>
+                        } 
                       />
                       <ListItemSecondaryAction>
-                        <IconButton size="small" onClick={() => quitarProducto(item.uid)} color="error">
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                          <Tooltip title="Disminuir cantidad">
+                            <IconButton size="small" onClick={() => decrementarCantidad(item.uid)} color="primary">
+                              <RemoveIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Typography variant="caption" sx={{ minWidth: 18, textAlign: 'center', fontWeight: 700 }}>
+                            {item.cantidad || 1}
+                          </Typography>
+                          <Tooltip title="Aumentar cantidad">
+                            <IconButton size="small" onClick={() => incrementarCantidad(item.uid)} color="primary">
+                              <AddIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Observación">
+                            <IconButton
+                              size="small"
+                              onClick={() => setObservacionActiva(prev => prev === item.uid ? null : item.uid)}
+                              color={item.observacion ? 'secondary' : 'default'}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <IconButton size="small" onClick={() => quitarProducto(item.uid)} color="error">
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
                       </ListItemSecondaryAction>
                     </ListItem>
+                    {observacionActiva === item.uid && (
+                      <Box sx={{ px: 2, pb: 2 }}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Observación del producto"
+                          placeholder='Ej: "sin arroz, sin ensalada"'
+                          value={item.observacion || ''}
+                          onChange={(e) => actualizarObservacion(item.uid, e.target.value)}
+                        />
+                      </Box>
+                    )}
+                    {item.observacion && observacionActiva !== item.uid && (
+                      <Box sx={{ px: 2, pb: 1 }}>
+                        <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
+                          ({formatearObservacion(item.observacion)})
+                        </Typography>
+                      </Box>
+                    )}
                     {index < carrito.length - 1 && <Divider />}
                   </Box>
                 ))
@@ -400,16 +496,6 @@ const TomarPedidoPage = () => {
             </List>
 
             <Box sx={{ p: 3, background: '#fafafa', borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={3}
-                label="Observaciones"
-                placeholder='Ej: "el menú ejecutivo va sin arroz"'
-                value={observaciones}
-                onChange={(e) => setObservaciones(e.target.value)}
-                sx={{ mb: 2 }}
-              />
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="subtitle1" fontWeight={600}>Total:</Typography>
                 <Typography variant="h5" fontWeight={800} color="#e94560">
@@ -564,18 +650,19 @@ const TomarPedidoPage = () => {
 
           <Box mb={2}>
             {comandaParaImprimir.productos.map((item, i) => (
-              <Box key={i} sx={{ display: 'flex', mb: 0.5 }}>
-                <Typography fontSize="14px" sx={{ fontWeight: 'bold', mr: 1 }}>1x</Typography>
-                <Typography fontSize="14px" sx={{ textTransform: 'uppercase' }}>{item.nombre}</Typography>
+              <Box key={i} sx={{ mb: 0.75 }}>
+                <Box sx={{ display: 'flex' }}>
+                  <Typography fontSize="14px" sx={{ fontWeight: 'bold', mr: 1 }}>{item.cantidad || 1}x</Typography>
+                  <Typography fontSize="14px" sx={{ textTransform: 'uppercase' }}>{item.nombre}</Typography>
+                </Box>
+                {item.observacion ? (
+                  <Typography fontSize="12px" sx={{ ml: 3 }}>
+                    ({formatearObservacion(item.observacion)})
+                  </Typography>
+                ) : null}
               </Box>
             ))}
           </Box>
-
-          {comandaParaImprimir.observaciones ? (
-            <Box sx={{ mt: 1, p: 1, border: '1px dashed #000', borderRadius: 1 }}>
-              <Typography fontSize="13px"><strong>Observaciones:</strong> {comandaParaImprimir.observaciones}</Typography>
-            </Box>
-          ) : null}
 
           <Box mt={3} textAlign="center">
             <Typography fontSize="14px">--------------------------------</Typography>

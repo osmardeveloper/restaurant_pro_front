@@ -10,6 +10,8 @@ import {
   DialogTitle, DialogContent, DialogActions, Button, Grid,
   TextField, InputAdornment, Link, Select, MenuItem, FormControl, InputLabel, Divider
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -23,6 +25,7 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import { comandaService, productoService, facturacionService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { agruparLineasPedido, calcularTotalLineasPedido, expandirLineasPedido, formatearObservacion, normalizarLineasPedido } from '../utils/comandaItems';
 
 const ComandasPage = () => {
   const navigate = useNavigate();
@@ -46,7 +49,7 @@ const ComandasPage = () => {
   const [editId, setEditId]              = useState(null);
   const [busquedaProd, setBusquedaProd]  = useState('');
   const [pedidoActual, setPedidoActual]  = useState([]);
-  const [observaciones, setObservaciones] = useState('');
+  const [observacionActiva, setObservacionActiva] = useState(null);
 
   // Modal Ver Factura
   const [modalFacturaOpen, setModalFacturaOpen] = useState(false);
@@ -87,9 +90,9 @@ const ComandasPage = () => {
 
   const abrirEditar = (comanda) => {
     setEditId(comanda._id);
-    const productos = comanda.ids_productos || [];
+    const productos = normalizarLineasPedido(comanda.ids_productos || []);
     setPedidoActual(productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9) })));
-    setObservaciones(comanda.observaciones || '');
+    setObservacionActiva(null);
     setBusquedaProd('');
     setDialogOpen(true);
   };
@@ -97,7 +100,7 @@ const ComandasPage = () => {
   const irAFacturar = (comanda) => {
     navigate('/facturacion', {
       state: {
-        productos: comanda.ids_productos || [],
+        productos: expandirLineasPedido(comanda.ids_productos || []),
         cliente: comanda.id_cliente || null,
         comandaId: comanda._id
       }
@@ -132,7 +135,7 @@ const ComandasPage = () => {
       return;
     }
 
-    const totalPedido = comandaPropina.ids_productos.reduce((acc, p) => acc + (p.precio || 0), 0);
+    const totalPedido = calcularTotalLineasPedido(comandaPropina.ids_productos || []);
     const montoPropina = tipoPropina === 'porcentaje' 
       ? (totalPedido * Number(valorPropina)) / 100 
       : Number(valorPropina);
@@ -143,7 +146,7 @@ const ComandasPage = () => {
       cliente: comandaPropina.id_cliente 
         ? `${comandaPropina.id_cliente.nombre} ${comandaPropina.id_cliente.apellido}` 
         : 'Consumidor Final',
-      productos: comandaPropina.ids_productos,
+      productos: agruparLineasPedido(comandaPropina.ids_productos || []),
       totalPedido,
       montoPropina,
       tipoPropina,
@@ -165,19 +168,56 @@ const ComandasPage = () => {
   };
 
   const agregarProducto = (prod) => {
-    setPedidoActual(prev => [...prev, { ...prod, uid: Math.random().toString(36).substr(2, 9) }]);
+    setPedidoActual(prev => {
+      const idx = prev.findIndex(item => item.id_producto === prod._id && !item.observacion);
+      if (idx >= 0) {
+        const siguiente = [...prev];
+        siguiente[idx] = { ...siguiente[idx], cantidad: (siguiente[idx].cantidad || 1) + 1 };
+        return siguiente;
+      }
+      return [...prev, {
+        uid: Math.random().toString(36).substr(2, 9),
+        id_producto: prod._id,
+        producto: prod,
+        nombre: prod.nombre,
+        precio: prod.precio,
+        costo: prod.costo ?? null,
+        cantidad: 1,
+        observacion: '',
+      }];
+    });
   };
 
   const quitarProducto = (uid) => {
     setPedidoActual(prev => prev.filter(item => item.uid !== uid));
   };
 
+  const incrementarCantidad = (uid) => {
+    setPedidoActual(prev => prev.map(item => item.uid === uid ? { ...item, cantidad: (item.cantidad || 1) + 1 } : item));
+  };
+
+  const decrementarCantidad = (uid) => {
+    setPedidoActual(prev => prev.flatMap(item => {
+      if (item.uid !== uid) return [item];
+      const cantidad = Number(item.cantidad || 1);
+      if (cantidad <= 1) return [];
+      return [{ ...item, cantidad: cantidad - 1 }];
+    }));
+  };
+
+  const actualizarObservacion = (uid, observacion) => {
+    setPedidoActual(prev => prev.map(item => item.uid === uid ? { ...item, observacion } : item));
+  };
+
   const guardarEdicion = async () => {
     if (!editId) return;
     try {
       await comandaService.update(editId, {
-        ids_productos: pedidoActual.map(p => p._id),
-        observaciones: observaciones || ''
+        ids_productos: pedidoActual.map(p => ({
+          id_producto: p.id_producto,
+          cantidad: p.cantidad || 1,
+          observacion: p.observacion || ''
+        })),
       });
       setSnack({ open: true, msg: 'Comanda actualizada exitosamente.', severity: 'success' });
       setDialogOpen(false);
@@ -196,11 +236,10 @@ const ComandasPage = () => {
     setComandaParaImprimir({
       mesa: mesaInfo,
       cliente: clienteInfo,
-      productos: comanda.ids_productos || [],
+      productos: agruparLineasPedido(comanda.ids_productos || []),
       fecha: new Date(comanda.createdAt).toLocaleString('es-MX'),
       a_domicilio: comanda.a_domicilio || false,
       venta_directa: comanda.venta_directa || false,
-      observaciones: comanda.observaciones || ''
     });
 
     setTimeout(() => {
@@ -240,7 +279,7 @@ const ComandasPage = () => {
   });
 
   const paginadas = comandasFiltradas.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-  const totalEdicion = pedidoActual.reduce((acc, curr) => acc + (curr.precio || 0), 0);
+  const totalEdicion = calcularTotalLineasPedido(pedidoActual);
   const prodFiltrados = platos.filter(p => (p.nombre || '').toLowerCase().includes(busquedaProd.toLowerCase()));
 
   return (
@@ -390,19 +429,27 @@ const ComandasPage = () => {
                           </TableCell>
                           <TableCell>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                              {(comanda.ids_productos || []).length === 0 ? (
+                              {(agruparLineasPedido(comanda.ids_productos || [])).length === 0 ? (
                                 <Typography color="text.secondary" variant="body2">Sin productos</Typography>
                               ) : (
-                                (comanda.ids_productos || []).map((prod, i) => (
-                                  <Chip key={prod._id || i} label={prod.nombre || 'Producto'} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />
+                                agruparLineasPedido(comanda.ids_productos || []).map((prod, i) => (
+                                  <Chip key={prod.uid || `${prod.id_producto}-${i}`} label={`${prod.cantidad || 1}x ${prod.nombre || 'Producto'}`} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />
                                 ))
                               )}
                             </Box>
                           </TableCell>
                           <TableCell>
-                            <Typography variant="body2" color={comanda.observaciones ? 'text.primary' : 'text.secondary'} sx={{ maxWidth: 220 }}>
-                              {comanda.observaciones || 'Sin observaciones'}
-                            </Typography>
+                            {agruparLineasPedido(comanda.ids_productos || []).some(item => item.observacion) ? (
+                              <Box sx={{ maxWidth: 220 }}>
+                                {agruparLineasPedido(comanda.ids_productos || []).filter(item => item.observacion).slice(0, 3).map((item, idx) => (
+                                  <Typography key={idx} variant="body2" sx={{ fontSize: 12 }}>
+                                    {item.nombre}: {item.observacion}
+                                  </Typography>
+                                ))}
+                              </Box>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">Sin observaciones</Typography>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2" color="text.secondary">
@@ -439,7 +486,7 @@ const ComandasPage = () => {
                             </Tooltip>
                           </TableCell>
                           <TableCell align="center">
-                            {(comanda.ids_productos || []).length > 0 && (
+                            {(agruparLineasPedido(comanda.ids_productos || [])).length > 0 && (
                               <Tooltip title="Imprimir Cuenta con Propina">
                                 <IconButton size="small" onClick={() => abrirModalPropina(comanda)} sx={{ color: '#e94560' }}>
                                   <PrintIcon fontSize="small" />
@@ -531,24 +578,43 @@ const ComandasPage = () => {
                         <Typography variant="caption" color="text.secondary">
                           {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio)}
                         </Typography>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Subtotal: {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format((item.precio || 0) * (item.cantidad || 1))}
+                        </Typography>
                       </Box>
-                      <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)}>
-                        <DeleteIcon fontSize="inherit" />
-                      </IconButton>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                        <IconButton size="small" color="primary" onClick={() => decrementarCantidad(item.uid)}>
+                          <RemoveIcon fontSize="inherit" />
+                        </IconButton>
+                        <Typography variant="caption" sx={{ minWidth: 18, textAlign: 'center', fontWeight: 700 }}>
+                          {item.cantidad || 1}
+                        </Typography>
+                        <IconButton size="small" color="primary" onClick={() => incrementarCantidad(item.uid)}>
+                          <AddIcon fontSize="inherit" />
+                        </IconButton>
+                        <IconButton size="small" color={item.observacion ? 'secondary' : 'default'} onClick={() => setObservacionActiva(prev => prev === item.uid ? null : item.uid)}>
+                          <EditIcon fontSize="inherit" />
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={() => quitarProducto(item.uid)}>
+                          <DeleteIcon fontSize="inherit" />
+                        </IconButton>
+                      </Box>
                     </Box>
                   ))
                 )}
               </Box>
               <Box sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
-                <TextField
-                  fullWidth
-                  multiline
-                  minRows={3}
-                  label="Observaciones"
-                  placeholder='Ej: "el menú ejecutivo va sin arroz"'
-                  value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value)}
-                />
+                {observacionActiva && (
+                  <TextField
+                    fullWidth
+                    multiline
+                    minRows={3}
+                    label="Observación del producto"
+                    placeholder='Ej: "sin arroz, sin ensalada"'
+                    value={pedidoActual.find(p => p.uid === observacionActiva)?.observacion || ''}
+                    onChange={(e) => actualizarObservacion(observacionActiva, e.target.value)}
+                  />
+                )}
               </Box>
               <Box sx={{ p: 2, bgcolor: '#1a1a2e', color: '#fff' }}>
                 <Typography variant="caption" sx={{ opacity: 0.8 }}>Total Comanda</Typography>
@@ -885,19 +951,19 @@ const ComandasPage = () => {
 
           <Box mb={2}>
             {comandaParaImprimir.productos.map((item, i) => (
-              <Box key={i} sx={{ display: 'flex', mb: 0.5 }}>
-                <Typography fontSize="14px" sx={{ fontWeight: 'bold', mr: 1 }}>1x</Typography>
-                <Typography fontSize="14px" sx={{ textTransform: 'uppercase' }}>{item.nombre}</Typography>
+              <Box key={i} sx={{ mb: 0.75 }}>
+                <Box sx={{ display: 'flex' }}>
+                  <Typography fontSize="14px" sx={{ fontWeight: 'bold', mr: 1 }}>{item.cantidad || 1}x</Typography>
+                  <Typography fontSize="14px" sx={{ textTransform: 'uppercase' }}>{item.nombre}</Typography>
+                </Box>
+                {item.observacion ? (
+                  <Typography fontSize="12px" sx={{ ml: 3 }}>
+                    ({formatearObservacion(item.observacion)})
+                  </Typography>
+                ) : null}
               </Box>
             ))}
           </Box>
-
-          {comandaParaImprimir.observaciones ? (
-            <Box sx={{ mt: 1, mb: 1, p: 1, border: '1px dashed #000', borderRadius: 1 }}>
-              <Typography fontSize="13px" fontWeight="bold">OBSERVACIONES</Typography>
-              <Typography fontSize="13px">{comandaParaImprimir.observaciones}</Typography>
-            </Box>
-          ) : null}
 
           <Box mt={3} textAlign="center">
             <Typography fontSize="14px">--------------------------------</Typography>

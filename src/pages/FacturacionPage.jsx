@@ -25,6 +25,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import WarningIcon from '@mui/icons-material/Warning';
 import { productoService, clienteService, facturacionService, mesaService, comandaService, costoService, categoriasProductosService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { expandirLineasPedido } from '../utils/comandaItems';
 
 const CATEGORIAS_ESTATICAS = [
   { value: 'platos_principales', label: 'Platos Principales' },
@@ -155,7 +156,7 @@ const FacturacionPage = () => {
 
       // Si venimos de la pantalla de comandas (navegación directa)
       if (navState?.comandaId) {
-        const productosConUid = (navState.productos || []).map(p => ({
+        const productosConUid = expandirLineasPedido(navState.productos || []).map(p => ({
           ...p,
           uid: p.uid || Math.random().toString(36).substr(2, 9)
         }));
@@ -211,7 +212,7 @@ const FacturacionPage = () => {
       );
 
       if (comandaActiva) {
-        const productosConUid = (comandaActiva.ids_productos || []).map(p => ({
+        const productosConUid = expandirLineasPedido(comandaActiva.ids_productos || []).map(p => ({
           ...p,
           uid: p.uid || Math.random().toString(36).substr(2, 9)
         }));
