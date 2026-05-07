@@ -245,6 +245,7 @@ const DomiciliosPage = () => {
       productos: agruparLineasPedido(comandaPropina.ids_productos || []),
       totalPedido,
       montoPropina,
+      totalConPropina: totalPedido + montoPropina,
       tipoPropina,
       valorPropina,
       fecha: new Date().toLocaleString('es-CO')
@@ -701,13 +702,17 @@ const DomiciliosPage = () => {
               <span>DESCRIPCIÓN</span>
               <span>TOTAL</span>
             </Box>
-            {(reciboDatos.productos || []).map((item, idx) => (
-              <Box key={idx} sx={{ display: 'flex', margin: '0.3mm 0', fontSize: '11px' }}>
-                <span style={{ flex: 1 }}>1x {(item.nombre || 'Producto').substring(0, 35)}</span>
-                <span style={{ flexGrow: 1, borderBottom: '1px dotted #000', margin: '0 1mm' }}></span>
-                <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '11px', marginLeft: '2mm' }}>${(item.precio || 0).toLocaleString('es-CO')}</span>
-              </Box>
-            ))}
+            {(reciboDatos.productos || []).map((item, idx) => {
+              const cantidad = Number(item.cantidad || 1);
+              const totalLinea = Number(item.precio || 0) * cantidad;
+              return (
+                <Box key={idx} sx={{ display: 'flex', margin: '0.3mm 0', fontSize: '11px' }}>
+                  <span style={{ flex: 1 }}>{cantidad}x {(item.nombre || 'Producto').substring(0, 35)}</span>
+                  <span style={{ flexGrow: 1, borderBottom: '1px dotted #000', margin: '0 1mm' }}></span>
+                  <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '11px', marginLeft: '2mm' }}>${totalLinea.toLocaleString('es-CO')}</span>
+                </Box>
+              );
+            })}
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
@@ -724,6 +729,16 @@ const DomiciliosPage = () => {
           <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography fontSize="11px">Propina</Typography>
             <Typography fontSize="11px">${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
+          </Box>
+
+          <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
+
+          {/* TOTAL */}
+          <Box sx={{ margin: '1.5mm 0' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
+              <span>TOTAL A PAGAR</span>
+              <span>${(reciboDatos.totalConPropina || (reciboDatos.totalPedido + reciboDatos.montoPropina)).toLocaleString('es-CO')}</span>
+            </Box>
           </Box>
 
           {/* FOOTER */}
