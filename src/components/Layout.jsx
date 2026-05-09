@@ -12,6 +12,7 @@ import MenuIcon           from '@mui/icons-material/Menu';
 import PeopleIcon         from '@mui/icons-material/People';
 import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
 import TableBarIcon       from '@mui/icons-material/TableBar';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import LocalShippingIcon  from '@mui/icons-material/LocalShipping';
 import StorefrontIcon     from '@mui/icons-material/Storefront';
 import ReceiptLongIcon    from '@mui/icons-material/ReceiptLong';
@@ -39,6 +40,7 @@ const navItems = [
   { key: 'productos',    label: 'Platos y Productos',    path: '/productos',    icon: <LocalDiningIcon /> },
   { key: 'tomar_pedido', label: 'Tomar Pedido', path: '/tomar-pedido', icon: <PostAddIcon /> },
   { key: 'comandas',     label: 'Comandas',     path: '/comandas',     icon: <ReceiptLongIcon /> },
+  { key: 'reservas',     label: 'Reservas',     path: '/reservas',     icon: <EventAvailableIcon /> },
   { key: 'facturacion',  label: 'Facturación',  path: '/facturacion',  icon: <PointOfSaleIcon /> },
   { key: 'auditoria_facturacion', label: 'Auditoría de Facturas', path: '/auditoria-facturacion', icon: <HistoryIcon />, requiereAdmin: true },
   { key: 'gastos',       label: 'Gastos',       path: '/gastos',       icon: <RequestQuoteIcon /> },
@@ -63,6 +65,9 @@ const Layout = () => {
     return navItems.filter(item => {
       // Si requiere admin, solo mostrar a admins
       if (item.requiereAdmin && usuario?.rol !== 'admin') return false;
+
+      // Reservas debe mostrarse por defecto si no existe una negación explícita
+      if (item.key === 'reservas') return permisos?.[item.key] !== false;
       
       // Si es admin, mostrar todo
       if (usuario?.rol === 'admin') return true; 
@@ -79,7 +84,13 @@ const Layout = () => {
       
       // Encontrar el item actual basado en el path de la URL
       const currentItem = navItems.find(n => location.pathname.startsWith(n.path));
-      const hasPermission = usuario?.rol === 'admin' || (currentItem && permisos[currentItem.key]);
+      const hasPermission = usuario?.rol === 'admin' || (
+        currentItem && (
+          currentItem.key === 'reservas'
+            ? permisos?.[currentItem.key] !== false
+            : permisos[currentItem.key] === true
+        )
+      );
 
       if (isRoot || !hasPermission) {
         if (itemsPermitidos.length > 0) {

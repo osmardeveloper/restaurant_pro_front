@@ -10,6 +10,7 @@ import LoginPage        from './pages/LoginPage';
 import PublicMenuPage   from './pages/PublicMenuPage';
 import UsuariosPage     from './pages/UsuariosPage';
 import MesasPage        from './pages/MesasPage';
+import ReservasPage     from './pages/ReservasPage';
 import DomiciliosPage   from './pages/DomiciliosPage';
 import VentaDirectaPage from './pages/VentaDirectaPage';
 import ProductosPage    from './pages/ProductosPage';
@@ -47,6 +48,7 @@ function App() {
             <Route path="clientes"     element={<ProtectedRoute modulo="clientes"><ClientesPage /></ProtectedRoute>} />
             <Route path="productos"    element={<ProtectedRoute modulo="productos"><ProductosPage /></ProtectedRoute>} />
             <Route path="mesas"        element={<ProtectedRoute modulo="mesas"><MesasPage /></ProtectedRoute>} />
+            <Route path="reservas"     element={<ProtectedRoute modulo="reservas"><ReservasPage /></ProtectedRoute>} />
             <Route path="domicilios"   element={<ProtectedRoute modulo="domicilios"><DomiciliosPage /></ProtectedRoute>} />
             <Route path="venta-directa" element={<ProtectedRoute modulo="venta_directa"><VentaDirectaPage /></ProtectedRoute>} />
             <Route path="tomar-pedido" element={<ProtectedRoute modulo="tomar_pedido"><TomarPedidoPage /></ProtectedRoute>} />

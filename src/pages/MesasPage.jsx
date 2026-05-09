@@ -1,12 +1,12 @@
 // ============================================================
 // src/pages/MesasPage.jsx — CRUD de Mesas con Cards y estados
 // ============================================================
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Typography, IconButton, Snackbar, Alert,
-  Grid, Card, CardContent, CardActions, Chip, Tooltip, Divider,
+  Grid, Card, CardContent, CardActions, Chip, Tooltip, Divider, Paper,
   Select, MenuItem, FormControl, InputLabel, Autocomplete
 } from '@mui/material';
 import RemoveIcon   from '@mui/icons-material/Remove';
@@ -14,16 +14,26 @@ import AddIcon      from '@mui/icons-material/Add';
 import EditIcon     from '@mui/icons-material/Edit';
 import DeleteIcon   from '@mui/icons-material/Delete';
 import TableBarIcon from '@mui/icons-material/TableBar';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PrintIcon from '@mui/icons-material/Print';
-import { mesaService, productoService, comandaService, clienteService } from '../services/api';
+import { mesaService, productoService, comandaService, clienteService, reservaService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { agruparLineasPedido, calcularTotalLineasPedido, expandirLineasPedido, formatearObservacion, normalizarLineasPedido } from '../utils/comandaItems';
 
 const estadoConfig = {
   'disponible':    { label: 'Disponible',    color: 'success' },
   'pedido tomado': { label: 'Pedido Tomado', color: 'warning' },
+};
+
+const hoy = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+const formatearHora = (hora) => {
+  if (!hora) return '-';
+  const [h, m] = hora.split(':').map(Number);
+  const periodo = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${periodo}`;
 };
 
 const TIPOS_DOCUMENTO = [
@@ -41,6 +51,7 @@ const MesasPage = () => {
   const [mesas, setMesas]               = useState([]);
   const [platos, setPlatos]             = useState([]);
   const [clientes, setClientes]         = useState([]);
+  const [reservasHoy, setReservasHoy]   = useState([]);
   
   const [loading, setLoading]           = useState(false);
   const [dialogOpen, setDialogOpen]     = useState(false);
@@ -81,14 +92,16 @@ const MesasPage = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [mesasRes, productosRes, cliRes] = await Promise.all([
+      const [mesasRes, productosRes, cliRes, reservasRes] = await Promise.all([
         mesaService.getAll(), 
         productoService.getAll(),
-        clienteService.getAll()
+        clienteService.getAll(),
+        reservaService.getAll({ desde: hoy(), hasta: hoy() })
       ]);
       setMesas(mesasRes.data);
       setPlatos(productosRes.data); 
       setClientes(cliRes.data);
+      setReservasHoy(reservasRes.data || []);
     } catch {
       showSnack('Error al cargar los datos.', 'error');
     } finally {
@@ -365,6 +378,19 @@ const MesasPage = () => {
   const totalEdicion = form.pedido_actual.reduce((acc, curr) => acc + (curr.precio || 0), 0);
   const prodFiltrados = platos.filter(p => (p.nombre || '').toLowerCase().includes(busquedaProd.toLowerCase()));
   const formatoCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+  const reservasPorMesa = reservasHoy.reduce((acc, reserva) => {
+    (reserva.mesas || []).forEach((mesa) => {
+      const key = String(mesa._id || mesa);
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(reserva);
+    });
+    return acc;
+  }, {});
+  const reservasHoyOrdenadas = [...reservasHoy].sort((a, b) => String(a.hora || '').localeCompare(String(b.hora || '')));
+  const mesasPorId = useMemo(
+    () => new Map(mesas.map((mesa) => [String(mesa._id), mesa])),
+    [mesas]
+  );
 
   return (
     <Box>
@@ -376,7 +402,7 @@ const MesasPage = () => {
           <Box>
             <Typography variant="h5" fontWeight={700} color="#1a1a2e">Mesas</Typography>
             <Typography variant="body2" color="text.secondary">
-              {mesas.filter(m => m.estado === 'disponible').length} disponibles / {mesas.length} total
+              {mesas.filter(m => m.estado === 'disponible').length} disponibles / {mesas.length} total / {reservasHoy.length} reserva(s) hoy
             </Typography>
           </Box>
         </Box>
@@ -386,6 +412,79 @@ const MesasPage = () => {
           </Button>
         )}
       </Box>
+
+      {reservasHoyOrdenadas.length > 0 && (
+        <Paper elevation={0} sx={{ mb: 3, p: 2.5, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <EventAvailableIcon sx={{ color: '#e94560' }} />
+            <Box>
+              <Typography variant="subtitle1" fontWeight={800} color="#1a1a2e">
+                Reservas de hoy
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Vista rápida de las mesas reservadas hoy. Solo informativo, no cambia la disponibilidad.
+              </Typography>
+            </Box>
+          </Box>
+
+          <Grid container spacing={1.5}>
+            {reservasHoyOrdenadas.map((reserva) => (
+              <Grid item xs={12} md={6} lg={4} key={reserva._id}>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 2,
+                    border: '1px solid rgba(233,69,96,0.18)',
+                    bgcolor: 'rgba(233,69,96,0.04)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'flex-start' }}>
+                    <Box>
+                      <Typography fontWeight={800} color="#1a1a2e">
+                        {formatearHora(reserva.hora_inicio)} - {formatearHora(reserva.hora_fin)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {reserva.id_cliente?.nombre && reserva.id_cliente?.apellido
+                          ? `${reserva.id_cliente.nombre} ${reserva.id_cliente.apellido}`
+                          : 'Cliente sin asignar'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        {reserva.cantidad_personas} persona(s) · {reserva.mesas?.length || 0} mesa(s)
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label={reserva.mesas?.length > 1 ? 'Múltiples mesas' : 'Una mesa'}
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      sx={{ borderRadius: 2 }}
+                    />
+                  </Box>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                    {(reserva.mesas || []).map((mesa) => {
+                      const mesaId = String(mesa._id || mesa);
+                      const mesaObj = mesasPorId.get(mesaId);
+                      return (
+                        <Chip
+                          key={mesaId}
+                          icon={<TableBarIcon />}
+                          label={mesaObj ? `Mesa #${mesaObj.numero_mesa}` : 'Mesa'}
+                          size="small"
+                          variant="outlined"
+                          sx={{ borderRadius: 2 }}
+                        />
+                      );
+                    })}
+                  </Box>
+                </Box>
+              </Grid>
+            ))}
+          </Grid>
+        </Paper>
+      )}
 
       {loading ? (
         <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>Cargando mesas...</Box>
@@ -408,6 +507,33 @@ const MesasPage = () => {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Typography variant="h4" fontWeight={800} color="#1a1a2e">#{mesa.numero_mesa}</Typography>
                     <Chip label={estadoConfig[mesa.estado]?.label || mesa.estado} color={estadoConfig[mesa.estado]?.color || 'default'} size="small" />
+                  </Box>
+                  <Box sx={{ mb: 1 }}>
+                    {reservasPorMesa[String(mesa._id)]?.length > 0 ? (
+                      <Box>
+                        <Chip
+                          icon={<EventAvailableIcon />}
+                          label={`Reservada ${formatearHora(reservasPorMesa[String(mesa._id)][0].hora_inicio)} - ${formatearHora(reservasPorMesa[String(mesa._id)][0].hora_fin)}`}
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                          sx={{ borderRadius: 2, mb: 0.5 }}
+                        />
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          {reservasPorMesa[String(mesa._id)][0].id_cliente?.nombre && reservasPorMesa[String(mesa._id)][0].id_cliente?.apellido
+                            ? `${reservasPorMesa[String(mesa._id)][0].id_cliente.nombre} ${reservasPorMesa[String(mesa._id)][0].id_cliente.apellido}`
+                            : 'Cliente sin asignar'}
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Chip
+                        icon={<EventAvailableIcon />}
+                        label="Sin reserva hoy"
+                        size="small"
+                        variant="outlined"
+                        sx={{ borderRadius: 2, color: 'text.secondary' }}
+                      />
+                    )}
                   </Box>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     {productosLength > 0 ? `${productosLength} producto(s) en pedido` : 'Sin pedido activo'}

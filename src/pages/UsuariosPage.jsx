@@ -31,6 +31,7 @@ const MODULOS_PERMISOS = [
   { key: 'productos',    label: 'Productos',      icon: '📦' },
   { key: 'platos',       label: 'Platos',         icon: '🍽️' },
   { key: 'mesas',        label: 'Mesas',          icon: '🪑' },
+  { key: 'reservas',     label: 'Reservas',       icon: '📅' },
   { key: 'domicilios',   label: 'Domicilios',     icon: '🚚' },
   { key: 'venta_directa', label: 'Venta Directa', icon: '🏪' },
   { key: 'tomar_pedido', label: 'Tomar Pedido',   icon: '📝' },

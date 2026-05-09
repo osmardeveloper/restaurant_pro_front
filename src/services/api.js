@@ -83,6 +83,14 @@ export const mesaService = {
   remove:  (id, masterKey) => api.delete(`/mesas/${id}`, { headers: { 'x-master-key': masterKey } }),
 };
 
+export const reservaService = {
+  getAll:  (params)    => api.get('/reservas', { params }),
+  getById: (id)        => api.get(`/reservas/${id}`),
+  create:  (datos)     => api.post('/reservas', datos),
+  update:  (id, datos) => api.put(`/reservas/${id}`, datos),
+  remove:  (id)        => api.delete(`/reservas/${id}`),
+};
+
 export const clienteService = {
   getAll:  ()          => api.get('/clientes'),
   getById: (id)        => api.get(`/clientes/${id}`),
