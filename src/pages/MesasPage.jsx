@@ -43,7 +43,7 @@ const TIPOS_DOCUMENTO = [
   { value: 'documento_extranjero', label: 'Documento Extranjero' },
 ];
 
-const FORM_INICIAL = { numero_mesa: '', estado: 'disponible', pedido_actual: [], comanda_id: null };
+const FORM_INICIAL = { numero_mesa: '', estado: 'disponible', pedido_actual: [], comanda_id: null, observaciones: '' };
 
 const MesasPage = () => {
   const { usuario } = useAuth();
@@ -89,6 +89,16 @@ const MesasPage = () => {
 
   const showSnack = (msg, severity = 'success') => setSnack({ open: true, msg, severity });
 
+  const fetchReservasHoy = useCallback(async () => {
+    try {
+      const reservasRes = await reservaService.getAll({ desde: hoy(), hasta: hoy() });
+      setReservasHoy(reservasRes.data || []);
+    } catch {
+      // No mostrar error en snack para no ser intrusivo
+      console.error('Error al actualizar reservas');
+    }
+  }, []);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -109,7 +119,14 @@ const MesasPage = () => {
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { 
+    fetchData();
+    // Recargar reservas cada 15 segundos para reflejar cambios en observaciones
+    const interval = setInterval(() => {
+      fetchReservasHoy();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [fetchData, fetchReservasHoy]);
 
   const validar = () => {
     const errors = {};
@@ -153,6 +170,7 @@ const MesasPage = () => {
       estado: mesa.estado, 
       pedido_actual: productos.map(p => ({ ...p, uid: Math.random().toString(36).substr(2, 9), esOriginal: true })),
       comanda_id: mesa.pedido_actual?._id || null,
+      observaciones: mesa.observaciones || '',
     });
     setObservacionActiva(null);
     setBusquedaProd('');
@@ -215,8 +233,8 @@ const MesasPage = () => {
     if (!validar()) return;
     try {
       if (editId) {
-        // 1. Actualizar datos básicos de la mesa (Núm/Estado)
-        const datosMesa = { numero_mesa: Number(form.numero_mesa), estado: form.estado };
+        // 1. Actualizar datos básicos de la mesa (Núm/Estado/Observaciones)
+        const datosMesa = { numero_mesa: Number(form.numero_mesa), estado: form.estado, observaciones: form.observaciones || '' };
         await mesaService.update(editId, datosMesa);
         
         // 2. Gestionar la Comanda (Pedido)
@@ -519,11 +537,18 @@ const MesasPage = () => {
                           variant="outlined"
                           sx={{ borderRadius: 2, mb: 0.5 }}
                         />
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                           {reservasPorMesa[String(mesa._id)][0].id_cliente?.nombre && reservasPorMesa[String(mesa._id)][0].id_cliente?.apellido
                             ? `${reservasPorMesa[String(mesa._id)][0].id_cliente.nombre} ${reservasPorMesa[String(mesa._id)][0].id_cliente.apellido}`
                             : 'Cliente sin asignar'}
                         </Typography>
+                        {reservasPorMesa[String(mesa._id)][0].observaciones && (
+                          <Box sx={{ mt: 0.75, p: 0.75, borderRadius: 1.5, bgcolor: 'rgba(255, 152, 0, 0.08)', border: '1px solid rgba(255, 152, 0, 0.3)' }}>
+                            <Typography variant="caption" fontWeight={600} color="#ff6f00">
+                              📝 {reservasPorMesa[String(mesa._id)][0].observaciones}
+                            </Typography>
+                          </Box>
+                        )}
                       </Box>
                     ) : (
                       <Chip
@@ -535,6 +560,15 @@ const MesasPage = () => {
                       />
                     )}
                   </Box>
+                  {(mesa.observaciones || hasPedido) && (
+                    <Box sx={{ mb: 1.25, p: 1.25, borderRadius: 2, bgcolor: 'rgba(255, 152, 0, 0.08)', border: '1px solid rgba(255, 152, 0, 0.3)', borderLeft: '3px solid #ff9800' }}>
+                      {mesa.observaciones && (
+                        <Typography variant="body2" fontWeight={600} color="#ff6f00" sx={{ mb: 0.5 }}>
+                          📝 {mesa.observaciones}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                     {productosLength > 0 ? `${productosLength} producto(s) en pedido` : 'Sin pedido activo'}
                   </Typography>
@@ -619,6 +653,18 @@ const MesasPage = () => {
                     <PersonAddIcon />
                   </Button>
                 </Tooltip>
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Observaciones (cumpleaños, notas especiales, etc.)"
+                  placeholder="Ej: Cumpleaños de María"
+                  value={form.observaciones || ''}
+                  onChange={(e) => setForm(p => ({ ...p, observaciones: e.target.value }))}
+                  size="small"
+                  multiline
+                  rows={2}
+                />
               </Grid>
 
             </Grid>

@@ -77,6 +77,7 @@ const FORM_INICIAL = {
   hora_inicio: '',
   hora_fin: '',
   id_cliente: null,
+  observaciones: '',
 };
 
 const CLAVE_MAESTRA = 'res2026';
@@ -192,13 +193,16 @@ const ReservasPage = () => {
 
   const abrirEditar = (row) => {
     setEditId(row._id);
+    // Extraer el _id si id_cliente es un objeto, si no, usar el valor directamente
+    const clienteId = row.id_cliente?._id || row.id_cliente;
     setForm({
       cantidad_personas: row.cantidad_personas || '',
       mesas: (row.mesas || []).map((mesa) => (mesa?._id ? mesa._id : mesa)),
       dia: row.dia || hoy(),
       hora_inicio: row.hora_inicio || '',
       hora_fin: row.hora_fin || '',
-      id_cliente: row.id_cliente || null,
+      id_cliente: clienteId || null,
+      observaciones: row.observaciones || '',
     });
     setFormErrors({});
     setConflictoHora(null);
@@ -215,6 +219,7 @@ const ReservasPage = () => {
       hora_inicio: form.hora_inicio,
       hora_fin: form.hora_fin,
       id_cliente: form.id_cliente,
+      observaciones: form.observaciones || '',
     };
 
     try {
@@ -620,10 +625,10 @@ const ReservasPage = () => {
               helperText={formErrors.hora_fin || (conflictoHora ? `⚠️ Conflicto: mesa(s) ocupada(s) de ${conflictoHora.horaExistente} a ${conflictoHora.horaFinExistente}` : '')}
             />
           </Box>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '0.6fr 0.2fr 0.2fr', gap: 1.5 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5, mb: 2 }}>
             <Autocomplete
               options={clientes}
-              value={clientes.find((c) => c._id === form.id_cliente) || null}
+              value={clientes.find((c) => String(c._id) === String(form.id_cliente)) || null}
               onChange={(_, value) => setForm((p) => ({ ...p, id_cliente: value?._id || null }))}
               getOptionLabel={(option) => `${option.nombre} ${option.apellido}${option.telefono ? ` - ${option.telefono}` : ''}`}
               renderInput={(params) => (
@@ -637,17 +642,9 @@ const ReservasPage = () => {
                 />
               )}
               noOptionsText="No hay clientes. Crea uno con el botón '+ Cliente'"
-              isOptionEqualToValue={(option, value) => option._id === value._id}
+              isOptionEqualToValue={(option, value) => value ? String(option._id) === String(value._id) : false}
               slotProps={{ paper: { sx: { textAlign: 'left' } } }}
             />
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={() => setOpenModalCliente(true)}
-              sx={{ borderRadius: 2 }}
-            >
-              + Nuevo cliente
-            </Button>
             <Autocomplete
               multiple
               options={mesas}
@@ -683,6 +680,29 @@ const ReservasPage = () => {
               noOptionsText="No hay mesas disponibles"
               isOptionEqualToValue={(option, value) => option._id === value._id}
               slotProps={{ paper: { sx: { textAlign: 'left' } } }}
+            />
+          </Box>
+          <Box sx={{ mb: 2 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={() => setOpenModalCliente(true)}
+              sx={{ borderRadius: 2 }}
+            >
+              + Nuevo cliente
+            </Button>
+          </Box>
+
+          <Box sx={{ mb: 2.5 }}>
+            <TextField
+              fullWidth
+              label="Observaciones (opcional)"
+              placeholder="Ej: Cumpleaños, preferencias especiales, etc."
+              value={form.observaciones || ''}
+              onChange={(e) => setForm((p) => ({ ...p, observaciones: e.target.value }))}
+              size="small"
+              multiline
+              rows={3}
             />
           </Box>
 
