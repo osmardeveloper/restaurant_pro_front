@@ -914,8 +914,8 @@ const FacturacionPage = () => {
                       {pedidoActual.map((item, idx) => (
                         <Box key={item.uid || idx} sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, pb: 1, borderBottom: '1px solid #f9f9f9' }}>
                           <Box sx={{ maxWidth: '100%' }}>
-                            <Typography variant="body2" fontWeight={700} display="block" sx={{ lineHeight: 1.2 }}>{item.nombre}</Typography>
-                            <Typography variant="caption" color="text.secondary">${new Intl.NumberFormat('es-CO').format(item.precio)}</Typography>
+                            <Typography variant="body2" fontWeight={900} display="block" sx={{ lineHeight: 1.2, fontSize: '18px', fontFamily: 'Arial' }}>{item.nombre}</Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '11px', fontFamily: 'Arial' }}>${new Intl.NumberFormat('es-CO').format(item.precio)}</Typography>
                           </Box>
                         </Box>
                       ))}
@@ -924,10 +924,10 @@ const FacturacionPage = () => {
                       {a_domicilio && montoDomicilio > 0 && (
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, pb: 1, borderBottom: '1px solid #f9f9f9', bgcolor: 'rgba(76,175,80,0.08)', p: 1, borderRadius: 1 }}>
                           <Box sx={{ maxWidth: '75%' }}>
-                            <Typography variant="body2" fontWeight={700} display="block" sx={{ lineHeight: 1.2 }}>🚚 Valor Domicilio</Typography>
-                            <Typography variant="caption" color="text.secondary">{metodoPagoDomicilio ? METODOS_PAGO.find(m => m.value === metodoPagoDomicilio)?.label : 'Sin asignar'}</Typography>
+                            <Typography variant="body2" fontWeight={900} display="block" sx={{ lineHeight: 1.2, fontSize: '18px', fontFamily: 'Arial' }}>🚚 Valor Domicilio</Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '11px', fontFamily: 'Arial' }}>{metodoPagoDomicilio ? METODOS_PAGO.find(m => m.value === metodoPagoDomicilio)?.label : 'Sin asignar'}</Typography>
                           </Box>
-                          <Typography variant="body2" fontWeight={700} color="#4caf50">${new Intl.NumberFormat('es-CO').format(montoDomicilio)}</Typography>
+                          <Typography variant="body2" fontWeight={700} color="#4caf50" sx={{ fontSize: '13px', fontFamily: 'Arial' }}>${new Intl.NumberFormat('es-CO').format(montoDomicilio)}</Typography>
                         </Box>
                       )}
                     </>
@@ -1356,7 +1356,7 @@ const FacturacionPage = () => {
                         <Typography variant="caption" color="text.secondary">{prod.factura_hora}</Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography fontWeight="bold">{prod.productos_label}</Typography>
+                        <Typography variant="body2" fontWeight={600} sx={{ fontSize: '16px', fontFamily: 'Arial' }}>{prod.productos_label}</Typography>
                       </TableCell>
                       <TableCell align="center">{prod.cantidad}</TableCell>
                       <TableCell align="right">
@@ -1482,14 +1482,14 @@ const FacturacionPage = () => {
 
           <Box mb={2}>
             <Box display="flex" justifyContent="space-between" mb={1} pb={0.5} borderBottom="1px solid #000">
-              <Typography fontSize="12px" fontWeight="bold">DESCRIPCIÓN</Typography>
-              <Typography fontSize="12px" fontWeight="bold">TOTAL</Typography>
+              <Typography fontSize="16px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>DESCRIPCIÓN</Typography>
+              <Typography fontSize="12px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>TOTAL</Typography>
             </Box>
             {facturaFinal.detalle_pedido?.map((item, i) => (
               <Box key={i} sx={{ display: 'flex', alignItems: 'flex-end', mb: 0.5 }}>
-                <Typography fontSize="12px" sx={{ whiteSpace: 'nowrap' }}>{item.cantidad}x {item.nombre}</Typography>
+                <Typography fontSize="16px" fontWeight="bold" sx={{ whiteSpace: 'nowrap', fontFamily: 'Arial' }}>{item.cantidad}x {item.nombre}</Typography>
                 <Box sx={{ flexGrow: 1, borderBottom: '1px dotted #000', mx: 0.5, position: 'relative', top: '-4px' }} />
-                <Typography fontSize="12px" sx={{ whiteSpace: 'nowrap' }}>
+                <Typography fontSize="12px" fontWeight="bold" sx={{ whiteSpace: 'nowrap', fontFamily: 'Arial' }}>
                   {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio * item.cantidad)}
                 </Typography>
               </Box>
@@ -1499,8 +1499,8 @@ const FacturacionPage = () => {
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
           <Box display="flex" justifyContent="space-between" mb={1}>
-            <Typography fontSize="12px">Subtotal productos:</Typography>
-            <Typography fontSize="12px">
+            <Typography fontSize="14px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>Subtotal productos:</Typography>
+            <Typography fontSize="14px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>
               {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.detalle_pedido?.reduce((sum, item) => sum + (item.precio * item.cantidad), 0) || 0)}
             </Typography>
           </Box>
@@ -1509,10 +1509,10 @@ const FacturacionPage = () => {
             <Box mt={1}>
               {facturaFinal.a_domicilio && facturaFinal.monto_domicilio > 0 && (
                 <>
-                  <Typography fontSize="12px" fontWeight="bold">Domicilio</Typography>
+                  <Typography fontSize="14px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>Domicilio</Typography>
                   <Box display="flex" justifyContent="space-between">
-                    <Typography fontSize="12px">{facturaFinal.metodo_pago_domicilio || 'Sin método'}</Typography>
-                    <Typography fontSize="12px">
+                    <Typography fontSize="13px" sx={{ fontFamily: 'Arial' }}>{facturaFinal.metodo_pago_domicilio || 'Sin método'}</Typography>
+                    <Typography fontSize="13px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>
                       {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.monto_domicilio || 0)}
                     </Typography>
                   </Box>
@@ -1524,18 +1524,18 @@ const FacturacionPage = () => {
 
               {facturaFinal.propinas?.length > 0 && (
                 <>
-                  <Typography fontSize="12px" fontWeight="bold">Propina</Typography>
+                  <Typography fontSize="14px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>Propina</Typography>
                   {facturaFinal.propinas.map((propina, idx) => (
                     <Box key={idx} display="flex" justifyContent="space-between">
-                      <Typography fontSize="12px">{propina.metodo_pago || 'Sin método'}</Typography>
-                      <Typography fontSize="12px">
+                      <Typography fontSize="13px" sx={{ fontFamily: 'Arial' }}>{propina.metodo_pago || 'Sin método'}</Typography>
+                      <Typography fontSize="13px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>
                         {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(propina.monto || 0)}
                       </Typography>
                     </Box>
                   ))}
                   <Box display="flex" justifyContent="space-between" mt={0.5} pt={0.5} borderTop="1px dotted #000">
-                    <Typography fontSize="12px">Total propina</Typography>
-                    <Typography fontSize="12px">
+                    <Typography fontSize="14px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>Total propina</Typography>
+                    <Typography fontSize="14px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>
                       {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(facturaFinal.propinas.reduce((sum, propina) => sum + (propina.monto || 0), 0))}
                     </Typography>
                   </Box>
@@ -1546,8 +1546,8 @@ const FacturacionPage = () => {
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
           <Box display="flex" justifyContent="space-between" mb={2} p={1} sx={{ bgcolor: '#f5f5f5' }}>
-            <Typography fontSize="14px" fontWeight="bold">TOTAL FINAL</Typography>
-            <Typography fontSize="14px" fontWeight="bold">
+            <Typography fontSize="14px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>TOTAL FINAL</Typography>
+            <Typography fontSize="14px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>
               {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(
                 facturaFinal.total_pagado + 
                 (facturaFinal.monto_domicilio || 0) +

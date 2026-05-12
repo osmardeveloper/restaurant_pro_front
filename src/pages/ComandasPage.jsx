@@ -434,7 +434,7 @@ const ComandasPage = () => {
                                 <Typography color="text.secondary" variant="body2">Sin productos</Typography>
                               ) : (
                                 agruparLineasPedido(comanda.ids_productos || []).map((prod, i) => (
-                                  <Chip key={prod.uid || `${prod.id_producto}-${i}`} label={`${prod.cantidad || 1}x ${prod.nombre || 'Producto'}`} size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />
+                                  <Chip key={prod.uid || `${prod.id_producto}-${i}`} label={`${prod.cantidad || 1}x ${prod.nombre || 'Producto'}`} size="small" variant="outlined" sx={{ fontSize: '1rem', fontFamily: 'Arial', fontWeight: 'bold' }} />
                                 ))
                               )}
                             </Box>
@@ -443,7 +443,7 @@ const ComandasPage = () => {
                             {agruparLineasPedido(comanda.ids_productos || []).some(item => item.observacion) ? (
                               <Box sx={{ maxWidth: 220 }}>
                                 {agruparLineasPedido(comanda.ids_productos || []).filter(item => item.observacion).slice(0, 3).map((item, idx) => (
-                                  <Typography key={idx} variant="body2" sx={{ fontSize: 12 }}>
+                                  <Typography key={idx} variant="body2" sx={{ fontSize: '16px', fontFamily: 'Arial' }}>
                                     {item.nombre}: {item.observacion}
                                   </Typography>
                                 ))}
@@ -659,14 +659,14 @@ const ComandasPage = () => {
               </Box>
 
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>Productos</Typography>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1, fontSize: '18px', fontFamily: 'Arial' }}>Productos</Typography>
                 {(facturaParaMostrar.detalle_pedido || []).map((item, idx) => (
                   <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5, p: 1, bgcolor: '#f5f5f5', borderRadius: 1 }}>
                     <Box>
-                      <Typography variant="body2" fontWeight={600}>{item.nombre}</Typography>
-                      <Typography variant="caption" color="text.secondary">Cantidad: {item.cantidad}</Typography>
+                      <Typography variant="body2" fontWeight={900} sx={{ fontSize: '16px', fontFamily: 'Arial' }}>{item.nombre}</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '11px', fontFamily: 'Arial' }}>Cantidad: {item.cantidad}</Typography>
                     </Box>
-                    <Typography variant="body2" fontWeight={600}>
+                    <Typography variant="body2" fontWeight={600} sx={{ fontSize: '12px', fontFamily: 'Arial' }}>
                       {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.precio * item.cantidad)}
                     </Typography>
                   </Box>
@@ -676,8 +676,8 @@ const ComandasPage = () => {
               {/* RESUMEN DE PAGOS */}
               <Box sx={{ p: 2, bgcolor: '#f0f0f0', borderRadius: 2, mb: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2" fontWeight={700}>Subtotal:</Typography>
-                  <Typography variant="body2" fontWeight={700}>
+                  <Typography variant="body2" fontWeight={700} sx={{ fontSize: '16px', fontFamily: 'Arial' }}>Subtotal:</Typography>
+                  <Typography variant="body2" fontWeight={700} sx={{ fontSize: '12px', fontFamily: 'Arial' }}>
                     {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format((facturaParaMostrar.detalle_pedido || []).reduce((sum, item) => sum + (item.precio * item.cantidad), 0))}
                   </Typography>
                 </Box>
@@ -847,27 +847,27 @@ const ComandasPage = () => {
           </style>
 
           {/* ENCABEZADO */}
-          <Box sx={{ textAlign: 'center', marginBottom: '2mm', fontWeight: 'bold' }}>
-            <Typography fontWeight="bold" fontSize="14px">LA PERLA RESTAURANTE BQ</Typography>
-            <Typography fontSize="10px">Dir.: cra 62 # 72-28</Typography>
-            <Typography fontSize="10px">Telf.: 315 075 2214</Typography>
-            <Typography fontSize="10px">{reciboDatos.fecha}</Typography>
-            <Typography fontSize="10px" fontWeight="bold">Recibo de Cuenta - MESA</Typography>
+          <Box sx={{ textAlign: 'center', marginBottom: '2mm', fontWeight: 'bold', fontFamily: 'Arial' }}>
+            <Typography fontWeight="bold" fontSize="14px" sx={{ fontFamily: 'Arial' }}>LA PERLA RESTAURANTE BQ</Typography>
+            <Typography fontSize="10px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>Dir.: cra 62 # 72-28</Typography>
+            <Typography fontSize="10px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>Telf.: 315 075 2214</Typography>
+            <Typography fontSize="10px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>{reciboDatos.fecha}</Typography>
+            <Typography fontSize="10px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>Recibo de Cuenta - MESA</Typography>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
           {/* INFORMACIÓN MESA */}
           <Box sx={{ margin: '1.5mm 0', padding: '1.5mm', backgroundColor: '#f5f5f5', borderRadius: '2mm' }}>
-            <Typography fontSize="10px" fontWeight="bold">MESA #{reciboDatos.mesa}</Typography>
-            <Typography fontSize="10px">Cliente: {reciboDatos.cliente}</Typography>
+            <Typography fontSize="10px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>MESA #{reciboDatos.mesa}</Typography>
+            <Typography fontSize="10px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>Cliente: {reciboDatos.cliente}</Typography>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
           {/* PRODUCTOS */}
           <Box sx={{ margin: '1.5mm 0' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderBottom: '1px solid #000', padding: '0.5mm 0', marginBottom: '1mm', fontWeight: 'bold' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderBottom: '1px solid #000', padding: '0.5mm 0', marginBottom: '1mm', fontWeight: 'bold', fontFamily: 'Arial' }}>
               <span>DESCRIPCIÓN</span>
               <span>TOTAL</span>
             </Box>
@@ -875,10 +875,10 @@ const ComandasPage = () => {
               const cantidad = Number(item.cantidad || 1);
               const totalLinea = Number(item.precio || 0) * cantidad;
               return (
-                <Box key={idx} sx={{ display: 'flex', margin: '0.3mm 0', fontSize: '11px' }}>
-                  <span style={{ flex: 1 }}>{cantidad}x {(item.nombre || 'Producto').substring(0, 35)}</span>
+                <Box key={idx} sx={{ display: 'flex', margin: '0.3mm 0', fontSize: '11px', fontFamily: 'Arial', fontWeight: 'bold' }}>
+                  <span style={{ flex: 1, fontFamily: 'Arial', fontWeight: 'bold' }}>{cantidad}x {(item.nombre || 'Producto').substring(0, 35)}</span>
                   <span style={{ flexGrow: 1, borderBottom: '1px dotted #000', margin: '0 1mm' }}></span>
-                  <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '11px', marginLeft: '2mm' }}>${totalLinea.toLocaleString('es-CO')}</span>
+                  <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '11px', marginLeft: '2mm', fontWeight: 'bold', fontFamily: 'Arial' }}>${totalLinea.toLocaleString('es-CO')}</span>
                 </Box>
               );
             })}
@@ -887,25 +887,25 @@ const ComandasPage = () => {
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
           {/* PROPINA */}
-          <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography fontSize="11px">Propina</Typography>
-            <Typography fontSize="11px">${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
+          <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontFamily: 'Arial' }}>
+            <Typography fontSize="11px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>Propina</Typography>
+            <Typography fontSize="11px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
           {/* TOTAL */}
           <Box sx={{ margin: '1.5mm 0' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
-              <span>TOTAL A PAGAR</span>
-              <span>${(reciboDatos.totalConPropina || (reciboDatos.totalPedido + reciboDatos.montoPropina)).toLocaleString('es-CO')}</span>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', fontFamily: 'Arial' }}>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>TOTAL A PAGAR</span>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>${(reciboDatos.totalConPropina || (reciboDatos.totalPedido + reciboDatos.montoPropina)).toLocaleString('es-CO')}</span>
             </Box>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
           {/* FOOTER */}
-          <Typography sx={{ textAlign: 'center', fontWeight: 'bold', marginTop: '2mm', fontSize: '11px' }}>
+          <Typography sx={{ textAlign: 'center', fontWeight: 'bold', marginTop: '2mm', fontSize: '11px', fontFamily: 'Arial' }}>
             ¡GRACIAS POR SU COMPRA!
           </Typography>
         </Box>

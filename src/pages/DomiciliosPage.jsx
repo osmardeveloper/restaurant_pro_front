@@ -698,18 +698,18 @@ const DomiciliosPage = () => {
 
           {/* PRODUCTOS */}
           <Box sx={{ margin: '1.5mm 0' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderBottom: '1px solid #000', padding: '0.5mm 0', marginBottom: '1mm', fontWeight: 'bold' }}>
-              <span>DESCRIPCIÓN</span>
-              <span>TOTAL</span>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderBottom: '1px solid #000', padding: '0.5mm 0', marginBottom: '1mm', fontWeight: 'bold', fontFamily: 'Arial' }}>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>DESCRIPCIÓN</span>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>TOTAL</span>
             </Box>
             {(reciboDatos.productos || []).map((item, idx) => {
               const cantidad = Number(item.cantidad || 1);
               const totalLinea = Number(item.precio || 0) * cantidad;
               return (
-                <Box key={idx} sx={{ display: 'flex', margin: '0.3mm 0', fontSize: '11px' }}>
-                  <span style={{ flex: 1 }}>{cantidad}x {(item.nombre || 'Producto').substring(0, 35)}</span>
+                <Box key={idx} sx={{ display: 'flex', margin: '0.3mm 0', fontSize: '11px', fontFamily: 'Arial', fontWeight: 'bold' }}>
+                  <span style={{ flex: 1, fontFamily: 'Arial', fontWeight: 'bold' }}>{cantidad}x {(item.nombre || 'Producto').substring(0, 35)}</span>
                   <span style={{ flexGrow: 1, borderBottom: '1px dotted #000', margin: '0 1mm' }}></span>
-                  <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '11px', marginLeft: '2mm' }}>${totalLinea.toLocaleString('es-CO')}</span>
+                  <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '11px', marginLeft: '2mm', fontWeight: 'bold', fontFamily: 'Arial' }}>${totalLinea.toLocaleString('es-CO')}</span>
                 </Box>
               );
             })}
@@ -719,30 +719,30 @@ const DomiciliosPage = () => {
 
           {/* SUBTOTAL */}
           <Box sx={{ margin: '1.5mm 0' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '12px' }}>
-              <span>SUBTOTAL</span>
-              <span>${reciboDatos.totalPedido.toLocaleString('es-CO')}</span>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '12px', fontFamily: 'Arial' }}>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>SUBTOTAL</span>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>${reciboDatos.totalPedido.toLocaleString('es-CO')}</span>
             </Box>
           </Box>
 
           {/* PROPINA */}
           <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography fontSize="11px">Propina</Typography>
-            <Typography fontSize="11px">${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
+            <Typography fontSize="11px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>Propina</Typography>
+            <Typography fontSize="11px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
           {/* TOTAL */}
           <Box sx={{ margin: '1.5mm 0' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
-              <span>TOTAL A PAGAR</span>
-              <span>${(reciboDatos.totalConPropina || (reciboDatos.totalPedido + reciboDatos.montoPropina)).toLocaleString('es-CO')}</span>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', fontFamily: 'Arial' }}>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>TOTAL A PAGAR</span>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>${(reciboDatos.totalConPropina || (reciboDatos.totalPedido + reciboDatos.montoPropina)).toLocaleString('es-CO')}</span>
             </Box>
           </Box>
 
           {/* FOOTER */}
-          <Typography sx={{ textAlign: 'center', fontWeight: 'bold', marginTop: '2mm', fontSize: '11px' }}>
+          <Typography sx={{ textAlign: 'center', fontWeight: 'bold', marginTop: '2mm', fontSize: '11px', fontFamily: 'Arial' }}>
             ¡GRACIAS POR SU COMPRA!
           </Typography>
         </Box>

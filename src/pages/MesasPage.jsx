@@ -560,13 +560,11 @@ const MesasPage = () => {
                       />
                     )}
                   </Box>
-                  {(mesa.observaciones || hasPedido) && (
+                  {mesa.observaciones && (
                     <Box sx={{ mb: 1.25, p: 1.25, borderRadius: 2, bgcolor: 'rgba(255, 152, 0, 0.08)', border: '1px solid rgba(255, 152, 0, 0.3)', borderLeft: '3px solid #ff9800' }}>
-                      {mesa.observaciones && (
-                        <Typography variant="body2" fontWeight={600} color="#ff6f00" sx={{ mb: 0.5 }}>
-                          📝 {mesa.observaciones}
-                        </Typography>
-                      )}
+                      <Typography variant="body2" fontWeight={600} color="#ff6f00" sx={{ mb: 0.5 }}>
+                        📝 {mesa.observaciones}
+                      </Typography>
                     </Box>
                   )}
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -919,33 +917,33 @@ const MesasPage = () => {
           </style>
 
           {/* ENCABEZADO */}
-          <Box sx={{ textAlign: 'center', marginBottom: '2mm', fontWeight: 'bold' }}>
+          <Box sx={{ textAlign: 'center', marginBottom: '2mm', fontWeight: 'bold', fontFamily: 'Arial' }}>
             <Box sx={{ mb: 1, display: 'flex', justifyContent: 'center' }}>
               <img src="/images/logo_factura.png" alt="Logo" style={{ maxWidth: '50mm', height: 'auto' }} />
             </Box>
-            <Typography fontWeight="bold" fontSize="14px">LA PERLA RESTAURANTE BQ</Typography>
-            <Typography fontSize="10px">Dir.: cra 62 # 72-28</Typography>
-            <Typography fontSize="10px">Telf.: 315 075 2214</Typography>
-            <Typography fontSize="10px">{reciboDatos.fecha}</Typography>
-            <Typography fontSize="10px" fontWeight="bold">Recibo de Cuenta - Mesa #{reciboDatos.numero_mesa}</Typography>
+            <Typography fontWeight="bold" fontSize="14px" sx={{ fontFamily: 'Arial' }}>LA PERLA RESTAURANTE BQ</Typography>
+            <Typography fontSize="10px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>Dir.: cra 62 # 72-28</Typography>
+            <Typography fontSize="10px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>Telf.: 315 075 2214</Typography>
+            <Typography fontSize="10px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>{reciboDatos.fecha}</Typography>
+            <Typography fontSize="10px" fontWeight="bold" sx={{ fontFamily: 'Arial' }}>Recibo de Cuenta - Mesa #{reciboDatos.numero_mesa}</Typography>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
           {/* PRODUCTOS */}
           <Box sx={{ margin: '1.5mm 0' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderBottom: '1px solid #000', padding: '0.5mm 0', marginBottom: '1mm', fontWeight: 'bold' }}>
-              <span>DESCRIPCIÓN</span>
-              <span>TOTAL</span>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', borderBottom: '1px solid #000', padding: '0.5mm 0', marginBottom: '1mm', fontWeight: 'bold', fontFamily: 'Arial' }}>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>DESCRIPCIÓN</span>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>TOTAL</span>
             </Box>
             {(reciboDatos.productos || []).map((item, idx) => {
               const cantidad = Number(item.cantidad || 1);
               const totalLinea = Number(item.precio || 0) * cantidad;
               return (
-                <Box key={idx} sx={{ display: 'flex', margin: '0.3mm 0', fontSize: '11px' }}>
-                  <span style={{ flex: 1 }}>{cantidad}x {(item.nombre || 'Producto').substring(0, 35)}</span>
+                <Box key={idx} sx={{ display: 'flex', margin: '0.3mm 0', fontSize: '11px', fontFamily: 'Arial', fontWeight: 'bold' }}>
+                  <span style={{ flex: 1, fontFamily: 'Arial', fontWeight: 'bold', fontSize: '11px' }}>{cantidad}x {(item.nombre || 'Producto').substring(0, 35)}</span>
                   <span style={{ flexGrow: 1, borderBottom: '1px dotted #000', margin: '0 1mm' }}></span>
-                  <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '11px', marginLeft: '2mm' }}>${totalLinea.toLocaleString('es-CO')}</span>
+                  <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontSize: '11px', marginLeft: '2mm', fontFamily: 'Arial', fontWeight: 'bold' }}>${totalLinea.toLocaleString('es-CO')}</span>
                 </Box>
               );
             })}
@@ -955,30 +953,30 @@ const MesasPage = () => {
 
           {/* SUBTOTAL */}
           <Box sx={{ margin: '1.5mm 0' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '12px' }}>
-              <span>SUBTOTAL</span>
-              <span>${reciboDatos.totalPedido.toLocaleString('es-CO')}</span>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '12px', fontFamily: 'Arial' }}>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>SUBTOTAL</span>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>${reciboDatos.totalPedido.toLocaleString('es-CO')}</span>
             </Box>
           </Box>
 
           {/* PROPINA */}
           <Box sx={{ margin: '0.8mm 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography fontSize="11px">Propina</Typography>
-            <Typography fontSize="11px">${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
+            <Typography fontSize="11px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>Propina</Typography>
+            <Typography fontSize="11px" sx={{ fontFamily: 'Arial', fontWeight: 'bold' }}>${reciboDatos.montoPropina.toLocaleString('es-CO')}</Typography>
           </Box>
 
           <Divider sx={{ borderStyle: 'dashed', my: 1, borderColor: '#000' }} />
 
           {/* TOTAL */}
           <Box sx={{ margin: '1.5mm 0' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px' }}>
-              <span>TOTAL A PAGAR</span>
-              <span>${(reciboDatos.totalConPropina || (reciboDatos.totalPedido + reciboDatos.montoPropina)).toLocaleString('es-CO')}</span>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '13px', fontFamily: 'Arial' }}>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>TOTAL A PAGAR</span>
+              <span style={{ fontFamily: 'Arial', fontWeight: 'bold' }}>${(reciboDatos.totalConPropina || (reciboDatos.totalPedido + reciboDatos.montoPropina)).toLocaleString('es-CO')}</span>
             </Box>
           </Box>
 
           {/* FOOTER */}
-          <Typography sx={{ textAlign: 'center', fontWeight: 'bold', marginTop: '2mm', fontSize: '11px' }}>
+          <Typography sx={{ textAlign: 'center', fontWeight: 'bold', marginTop: '2mm', fontSize: '11px', fontFamily: 'Arial' }}>
             ¡GRACIAS POR SU VISITA!
           </Typography>
         </Box>

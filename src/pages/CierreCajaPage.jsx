@@ -140,34 +140,33 @@ const PRINT_STYLE = `
       padding: 6px !important;
       background: #fff !important;
       font-family: Arial, Helvetica, sans-serif;
-      font-size: 7px;
+      font-size: 11px;
       color: #000;
     }
 
     /* Encabezado de una línea */
     .ph { display: flex; align-items: baseline; gap: 18px; border-bottom: 1.5px solid #333; padding-bottom: 3px; margin-bottom: 5px; }
-    .ph-title { font-size: 12px; font-weight: bold; }
-    .ph-sub    { font-size: 7px; color: #444; }
+    .ph-title { font-size: 16px; font-weight: bold; font-family: Arial; }
+    .ph-sub    { font-size: 11px; color: #444; font-family: Arial; }
 
     /* Tabla resumen tipo Excel */
     .sg { border-collapse: collapse; width: 100%; margin-bottom: 6px; }
     .sg td { border: 1px solid #555; padding: 2px 4px; text-align: center; vertical-align: middle; }
-    .sg .lbl { font-size: 5.5px; text-transform: uppercase; color: #555; font-weight: bold; display: block; }
-    .sg .val { font-size: 8px; font-weight: bold; display: block; }
+    .sg .lbl { font-size: 8px; text-transform: uppercase; color: #555; font-weight: bold; display: block; font-family: Arial; }
+    .sg .val { font-size: 12px; font-weight: bold; display: block; font-family: Arial; }
     .sg thead td { background: #d8d8d8 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
     /* Títulos de sección */
-    .st { font-size: 8px; font-weight: bold; margin: 6px 0 2px; }
+    .st { font-size: 12px; font-weight: bold; margin: 6px 0 2px; font-family: Arial; }
     .st-blue { color: #1565c0; }
     .st-red  { color: #c62828; }
     .st-green { color: #2e7d32; }
 
     /* Tablas de datos */
-    table.data { font-size: 7px; border-collapse: collapse; width: 100%; margin-bottom: 8px; }
-    table.data th, table.data td { padding: 2px 3px; border: 1px solid #000; white-space: nowrap; }
-    table.data thead th {
-      background: #d0d0d0 !important;
-      font-weight: bold;
+    table.data { font-size: 11px; border-collapse: collapse; width: 100%; margin-bottom: 8px; font-family: Arial; }
+    table.data th { padding: 2px 3px; border: 1px solid #000; white-space: nowrap; font-weight: bold; background: #d0d0d0; }
+    table.data td { padding: 2px 3px; border: 1px solid #000; white-space: nowrap; }
+    table.data td:last-child { font-size: 10px; }
       text-align: center;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
