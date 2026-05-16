@@ -148,7 +148,7 @@ const GastosPage = () => {
   return (
     <Box>
       {/* ── HEADER ── */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, flexWrap: 'wrap', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{ p: 1, borderRadius: 2, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }}>
             <RequestQuoteIcon sx={{ color: '#fff', display: 'block' }} />
@@ -161,7 +161,7 @@ const GastosPage = () => {
         <Button 
           variant="contained" startIcon={<AddCircleIcon />} 
           onClick={abrirNuevo}
-          sx={{ background: 'linear-gradient(135deg, #2196f3, #1976d2)', fontWeight: 700, borderRadius: 2, px: 3 }}
+          sx={{ background: 'linear-gradient(135deg, #2196f3, #1976d2)', fontWeight: 700, borderRadius: 2, px: 3, alignSelf: { xs: 'stretch', sm: 'center' } }}
         >
           Nuevo Gasto
         </Button>
@@ -170,7 +170,7 @@ const GastosPage = () => {
       {/* ── TABS ── */}
       <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: '#fafafa' }}>
-          <Tabs value={tab} onChange={(e, val) => setTab(val)} textColor="primary" indicatorColor="primary">
+          <Tabs value={tab} onChange={(e, val) => setTab(val)} textColor="primary" indicatorColor="primary" variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
             <Tab icon={<TodayIcon />} label="Gastos de hoy" iconPosition="start" sx={{ fontWeight: 600 }} />
             <Tab icon={<ViewListIcon />} label="Gastos por periodo" iconPosition="start" sx={{ fontWeight: 600 }} />
           </Tabs>

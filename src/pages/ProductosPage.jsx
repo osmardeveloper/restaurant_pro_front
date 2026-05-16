@@ -586,7 +586,7 @@ const ProductosPage = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{ p: 1, borderRadius: 2, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }}>
             <InventoryIcon sx={{ color: '#fff', display: 'block' }} />
@@ -597,14 +597,14 @@ const ProductosPage = () => {
           </Box>
         </Box>
         
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: { xs: 'stretch', sm: 'center' }, flexWrap: 'wrap', width: { xs: '100%', md: 'auto' } }}>
           <TextField
             placeholder="Buscar producto..."
             size="small"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-            sx={{ width: 250, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
+            sx={{ width: { xs: '100%', sm: 250 }, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
           />
           
           {/* Botones de exportación */}
@@ -737,7 +737,7 @@ const ProductosPage = () => {
             rows={2} 
           />
           
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
             <TextField 
               fullWidth 
               label="Precio" 

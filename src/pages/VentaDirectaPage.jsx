@@ -303,7 +303,7 @@ const VentaDirectaPage = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{ p: 1, borderRadius: 2, background: 'linear-gradient(135deg, #4caf50, #388e3c)' }}>
             <StorefrontIcon sx={{ color: '#fff', display: 'block' }} />
@@ -415,9 +415,9 @@ const VentaDirectaPage = () => {
               </Grid>
             </Grid>
           </Box>
-          <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flex: 1, minHeight: 0, overflow: { xs: 'auto', md: 'hidden' } }}>
             {/* Buscador de Productos (Izq) */}
-            <Box sx={{ flex: 2, p: 3, borderRight: '1px solid rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Box sx={{ flex: 2, p: { xs: 2, md: 3 }, borderRight: { md: '1px solid rgba(0,0,0,0.08)' }, borderBottom: { xs: '1px solid rgba(0,0,0,0.08)', md: 'none' }, display: 'flex', flexDirection: 'column', overflow: { xs: 'visible', md: 'hidden' }, minHeight: 0 }}>
               <TextField 
                  fullWidth size="small" placeholder="Buscar producto para agregar..." 
                  value={busquedaProd} onChange={e => setBusquedaProd(e.target.value)}
@@ -442,7 +442,7 @@ const VentaDirectaPage = () => {
             </Box>
             
             {/* Carrito de la Venta Directa (Der) */}
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa' }}>
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa', minHeight: { xs: 320, md: 'auto' } }}>
               <Box sx={{ p: 2, bgcolor: '#f0f0f0', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
                 <Typography variant="subtitle2" fontWeight={700}>Productos del Pedido</Typography>
               </Box>
@@ -525,7 +525,7 @@ const VentaDirectaPage = () => {
       {/* Modal Crear Cliente Rápido */}
       <Dialog open={openModalCliente} onClose={() => setOpenModalCliente(false)} sx={{ '& .MuiDialog-paper': { borderRadius: 3 } }}>
         <DialogTitle fontWeight={700}>Nuevo Cliente</DialogTitle>
-        <DialogContent sx={{ minWidth: 350, my: 2 }}>
+        <DialogContent sx={{ minWidth: { xs: 0, sm: 350 }, my: 2 }}>
           <TextField 
             fullWidth label="Nombre" size="small" 
             value={formCliente.nombre} onChange={e => setFormCliente({...formCliente, nombre: e.target.value})}
@@ -558,7 +558,7 @@ const VentaDirectaPage = () => {
       {/* Modal Propina */}
       <Dialog open={openPropina} onClose={() => setOpenPropina(false)}>
         <DialogTitle fontWeight={700}>Propina</DialogTitle>
-        <DialogContent sx={{ minWidth: 350, py: 2 }}>
+        <DialogContent sx={{ minWidth: { xs: 0, sm: 350 }, py: 2 }}>
           <FormControl fullWidth size="small" sx={{ mb: 2, mt: 2 }}>
             <InputLabel>Tipo</InputLabel>
             <Select value={tipoPropina} onChange={e => setTipoPropina(e.target.value)} label="Tipo">
@@ -577,7 +577,7 @@ const VentaDirectaPage = () => {
       {/* Modal Eliminar Comanda */}
       <Dialog open={openEliminar} onClose={() => setOpenEliminar(false)} sx={{ '& .MuiDialog-paper': { borderRadius: 3 } }}>
         <DialogTitle sx={{ fontWeight: 700, color: '#e74c3c' }}>Eliminar Comanda</DialogTitle>
-        <DialogContent sx={{ minWidth: 400, py: 2 }}>
+        <DialogContent sx={{ minWidth: { xs: 0, sm: 400 }, py: 2 }}>
           <Typography variant="body2" sx={{ mb: 2 }}>Ingresa la clave maestra para eliminar esta comanda.</Typography>
           <TextField 
             fullWidth 

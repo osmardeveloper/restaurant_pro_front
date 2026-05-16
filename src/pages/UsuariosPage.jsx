@@ -193,7 +193,7 @@ const UsuariosPage = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{ p: 1, borderRadius: 2, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }}>
             <PeopleIcon sx={{ color: '#fff', display: 'block' }} />
@@ -204,7 +204,7 @@ const UsuariosPage = () => {
           </Box>
         </Box>
         {usuario?.rol === 'admin' && (
-          <Button id="crear-usuario-btn" variant="contained" startIcon={<AddIcon />} onClick={abrirCrear} sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, px: 3, boxShadow: '0 4px 14px rgba(233,69,96,0.35)' }}>
+          <Button id="crear-usuario-btn" variant="contained" startIcon={<AddIcon />} onClick={abrirCrear} sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, px: 3, boxShadow: '0 4px 14px rgba(233,69,96,0.35)', alignSelf: { xs: 'stretch', sm: 'center' } }}>
             Nuevo Usuario
           </Button>
         )}
@@ -246,7 +246,7 @@ const UsuariosPage = () => {
         </DialogTitle>
         
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabIndex} onChange={(_, val) => setTabIndex(val)} variant="fullWidth" textColor="primary" indicatorColor="primary">
+          <Tabs value={tabIndex} onChange={(_, val) => setTabIndex(val)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile textColor="primary" indicatorColor="primary">
             <Tab icon={<AssignmentIndIcon />} label="DATOS GENERALES" iconPosition="start" />
             <Tab icon={<SecurityIcon />} label="PERMISOS" iconPosition="start" />
           </Tabs>

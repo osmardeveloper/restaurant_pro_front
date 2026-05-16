@@ -301,7 +301,7 @@ const CierreCajaPage = () => {
           </Box>
         </Box>
 
-        <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
+        <Paper elevation={0} sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={3}>
               <TextField fullWidth size="small" type="date" InputLabelProps={{ shrink: true }} value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} />
@@ -339,7 +339,7 @@ const CierreCajaPage = () => {
                 { label: 'GASTO EN EFECTIVO', val: globalesEgreso.efectivo, color: '#c62828', tipo: 'simple' },
                 { label: 'EFECTIVO EN CAJA', val: globalesIngreso.efectivo - globalesEgreso.efectivo, color: '#2e7d32', tipo: 'simple' },
               ].map(({ label, val, color, tipo }) => (
-                <Grid item xs={4} md={2} key={label}>
+                <Grid item xs={6} sm={4} md={2} key={label}>
                   <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight={600} display="block">{label}</Typography>
                   {tipo === 'simple' ? (
                     <Typography variant="h6" fontWeight={700} color={color}>{formatCol(val)}</Typography>
@@ -378,7 +378,7 @@ const CierreCajaPage = () => {
                   { label: 'GASTO DATAFONO', val: globalesEgreso.datafono, color: '#c62828' },
                   { label: 'GASTOS GLOBALES', val: globalesEgreso.total, color: '#c62828' },
                 ].map(({ label, val, color }) => (
-                  <Grid item xs={4} md={2} key={label}>
+                  <Grid item xs={6} sm={4} md={2} key={label}>
                     <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight={600} display="block">{label}</Typography>
                     <Typography variant="h6" fontWeight={700} color={color}>{formatCol(val)}</Typography>
                   </Grid>
@@ -404,7 +404,7 @@ const CierreCajaPage = () => {
                   { label: 'COSTO DATAFONO', val: globalesCostos.datafono, color: '#1565c0' },
                   { label: 'COSTOS GLOBALES', val: globalesCostos.total, color: '#1565c0' },
                 ].map(({ label, val, color }) => (
-                  <Grid item xs={4} md={2} key={label}>
+                  <Grid item xs={6} sm={4} md={2} key={label}>
                     <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight={600} display="block">{label}</Typography>
                     <Typography variant="h6" fontWeight={700} color={color}>{formatCol(val)}</Typography>
                   </Grid>
@@ -429,7 +429,7 @@ const CierreCajaPage = () => {
                   { label: 'SALDO DATAFONO', val: globalesIngreso.datafono - globalesEgreso.datafono - globalesCostos.datafono, color: '#2e7d32' },
                   { label: 'SALDOS GLOBALES', val: globalesIngreso.total - globalesEgreso.total - globalesCostos.total, color: '#2e7d32' },
                 ].map(({ label, val, color }) => (
-                  <Grid item xs={4} md={2} key={label}>
+                  <Grid item xs={6} sm={4} md={2} key={label}>
                     <Typography variant="caption" color="text.secondary" textTransform="uppercase" fontWeight={600} display="block">{label}</Typography>
                     <Typography variant="h6" fontWeight={700} color={color}>{formatCol(val)}</Typography>
                   </Grid>

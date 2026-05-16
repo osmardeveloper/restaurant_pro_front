@@ -26,14 +26,20 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  width: 100%;
 }
 
 body {
+  width: 100%;
+  min-width: 0;
   font-family: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--color-bg);
   color: var(--color-text);
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  touch-action: manipulation;
 }
 
 /* Scrollbar personalizada */

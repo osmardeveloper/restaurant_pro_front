@@ -431,7 +431,7 @@ const ReservasPage = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, mb: 3, gap: 2, flexWrap: 'wrap' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{ p: 1, borderRadius: 2, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }}>
             <EventAvailableIcon sx={{ color: '#fff', display: 'block' }} />
@@ -453,6 +453,7 @@ const ReservasPage = () => {
             borderRadius: 2,
             px: 3,
             boxShadow: '0 4px 14px rgba(233,69,96,0.35)',
+            alignSelf: { xs: 'stretch', sm: 'center' },
           }}
         >
           Agendar reserva
@@ -460,13 +461,13 @@ const ReservasPage = () => {
       </Box>
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Paper elevation={0} sx={{ p: 2.25, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
             <Typography variant="body2" color="text.secondary">Reservas para hoy</Typography>
             <Typography variant="h4" fontWeight={800} color="#1a1a2e">{resumen.hoy}</Typography>
           </Paper>
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Paper elevation={0} sx={{ p: 2.25, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
             <Typography variant="body2" color="text.secondary">Mesas reservadas hoy</Typography>
             <Typography variant="h4" fontWeight={800} color="#1a1a2e">{resumen.mesasHoy}</Typography>
@@ -474,7 +475,7 @@ const ReservasPage = () => {
         </Grid>
       </Grid>
 
-        <Paper elevation={0} sx={{ p: 2.5, mb: 2.5, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
+        <Paper elevation={0} sx={{ p: { xs: 2, md: 2.5 }, mb: 2.5, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
             <FilterAltIcon color="primary" />
             <Typography fontWeight={700} color="#1a1a2e">Filtrar por fecha</Typography>
@@ -501,19 +502,19 @@ const ReservasPage = () => {
             />
           </Grid>
           <Grid item xs={12} md={4}>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flexDirection: { xs: 'column', sm: 'row' } }}>
               <Button variant="outlined" startIcon={<RestartAltIcon />} onClick={() => {
                 const desde = hoy();
                 const hasta = hoy();
                 setFiltros({ desde, hasta });
                 fetchReservas({ desde, hasta });
-              }}>
+              }} sx={{ flex: { xs: '1 1 auto', sm: '0 0 auto' } }}>
                 Reiniciar
               </Button>
               <Button
                 variant="contained"
                 onClick={() => fetchReservas(filtros)}
-                sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }}
+                sx={{ background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
               >
                 Buscar
               </Button>
@@ -563,11 +564,11 @@ const ReservasPage = () => {
           <CalendarMonthIcon />
           {editId ? 'Editar reserva' : 'Agendar reserva'}
         </DialogTitle>
-        <DialogContent sx={{ pt: 3, px: 2 }}>
+        <DialogContent sx={{ pt: 3, px: { xs: 2, sm: 3 } }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Completa los datos de la reserva.
           </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1.5, mb: 3 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(4, minmax(0, 1fr))' }, gap: 1.5, mb: 3 }}>
             <TextField
               fullWidth
               label="Cantidad de personas"
@@ -625,7 +626,7 @@ const ReservasPage = () => {
               helperText={formErrors.hora_fin || (conflictoHora ? `⚠️ Conflicto: mesa(s) ocupada(s) de ${conflictoHora.horaExistente} a ${conflictoHora.horaFinExistente}` : '')}
             />
           </Box>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1.5, mb: 2 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5, mb: 2 }}>
             <Autocomplete
               options={clientes}
               value={clientes.find((c) => String(c._id) === String(form.id_cliente)) || null}

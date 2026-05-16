@@ -135,7 +135,7 @@ const ClientesPage = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{ p: 1, borderRadius: 2, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }}>
             <AssignmentIndIcon sx={{ color: '#fff', display: 'block' }} />
@@ -145,14 +145,14 @@ const ClientesPage = () => {
             <Typography variant="body2" color="text.secondary">{clientes.length} cliente(s) registrado(s)</Typography>
           </Box>
         </Box>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, flexDirection: { xs: 'column', sm: 'row' }, width: { xs: '100%', sm: 'auto' } }}>
           <TextField
              placeholder="Buscar cliente..."
              size="small"
              value={busqueda}
              onChange={(e) => setBusqueda(e.target.value)}
              InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-             sx={{ width: 250, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
+             sx={{ width: { xs: '100%', sm: 250 }, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
           />
           <Button variant="contained" startIcon={<AddIcon />} onClick={abrirCrear} sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, px: 3, boxShadow: '0 4px 14px rgba(233,69,96,0.35)' }}>
             Nuevo Cliente
@@ -191,11 +191,11 @@ const ClientesPage = () => {
           {editId ? 'Editar Cliente' : 'Nuevo Cliente'}
         </DialogTitle>
         <DialogContent sx={{ pt: 3, pb: 1 }}>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
             <TextField fullWidth label="Nombre" value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} margin="normal" />
             <TextField fullWidth label="Apellido" value={form.apellido} onChange={e => setForm(p => ({ ...p, apellido: e.target.value }))} margin="normal" />
           </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
             <FormControl fullWidth margin="normal">
               <InputLabel id="tipo-doc-label">Tipo de Documento</InputLabel>
               <Select labelId="tipo-doc-label" value={form.tipo_documento} label="Tipo de Documento" onChange={e => setForm(p => ({ ...p, tipo_documento: e.target.value }))}>

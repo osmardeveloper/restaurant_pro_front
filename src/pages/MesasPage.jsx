@@ -412,7 +412,7 @@ const MesasPage = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{ p: 1, borderRadius: 2, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }}>
             <TableBarIcon sx={{ color: '#fff', display: 'block' }} />
@@ -425,7 +425,7 @@ const MesasPage = () => {
           </Box>
         </Box>
         {usuario?.rol === 'admin' && (
-          <Button id="crear-mesa-btn" variant="contained" startIcon={<AddIcon />} onClick={abrirCrear} sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, px: 3, boxShadow: '0 4px 14px rgba(233,69,96,0.35)' }}>
+          <Button id="crear-mesa-btn" variant="contained" startIcon={<AddIcon />} onClick={abrirCrear} sx={{ background: 'linear-gradient(135deg, #e94560, #c62a47)', borderRadius: 2, px: 3, boxShadow: '0 4px 14px rgba(233,69,96,0.35)', alignSelf: { xs: 'stretch', sm: 'center' } }}>
             Nueva Mesa
           </Button>
         )}
@@ -637,7 +637,6 @@ const MesasPage = () => {
               <Grid item xs={12} sm={7} md={8}>
                 <Autocomplete
                   options={clientes}
-                  style={{width: "30vw"}}
                   getOptionLabel={(o) => o ? `${o.nombre || ''} ${o.apellido || ''} ${o.numero_documento ? `(${o.numero_documento})` : ''}`.trim() : ''}
                   value={selectedCliente}
                   onChange={(_, val) => setSelectedCliente(val)}
@@ -667,9 +666,9 @@ const MesasPage = () => {
 
             </Grid>
           </Box>
-          <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flex: 1, minHeight: 0, overflow: { xs: 'auto', md: 'hidden' } }}>
             {/* Buscador de Productos (Izq) */}
-            <Box sx={{ flex: 2, p: 3, borderRight: '1px solid rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Box sx={{ flex: 2, p: { xs: 2, md: 3 }, borderRight: { md: '1px solid rgba(0,0,0,0.08)' }, borderBottom: { xs: '1px solid rgba(0,0,0,0.08)', md: 'none' }, display: 'flex', flexDirection: 'column', overflow: { xs: 'visible', md: 'hidden' }, minHeight: 0 }}>
               <TextField 
                  fullWidth size="small" placeholder="Buscar producto para agregar..." 
                  value={busquedaProd} onChange={e => setBusquedaProd(e.target.value)}
@@ -694,7 +693,7 @@ const MesasPage = () => {
             </Box>
             
             {/* Carrito de la Mesa (Der) */}
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa' }}>
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa', minHeight: { xs: 320, md: 'auto' } }}>
               <Box sx={{ p: 2, bgcolor: '#f0f0f0', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
                 <Typography variant="subtitle2" fontWeight={700}>Productos en la Mesa</Typography>
               </Box>
@@ -780,11 +779,11 @@ const MesasPage = () => {
           Crear Cliente Rápido
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
             <TextField fullWidth label="Nombre" value={formCliente.nombre} onChange={e => setFormCliente(p => ({ ...p, nombre: e.target.value }))} margin="normal" size="small"/>
             <TextField fullWidth label="Apellido" value={formCliente.apellido} onChange={e => setFormCliente(p => ({ ...p, apellido: e.target.value }))} margin="normal" size="small"/>
           </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
             <TextField
               select fullWidth label="Documento" value={formCliente.tipo_documento}
               onChange={e => setFormCliente(p => ({ ...p, tipo_documento: e.target.value }))} margin="normal" size="small" SelectProps={{ native: true }}
@@ -814,7 +813,7 @@ const MesasPage = () => {
       {/* Modal Eliminar Comanda */}
       <Dialog open={openEliminar} onClose={() => setOpenEliminar(false)} sx={{ '& .MuiDialog-paper': { borderRadius: 3 } }}>
         <DialogTitle sx={{ fontWeight: 700, color: '#e74c3c' }}>Eliminar Comanda</DialogTitle>
-        <DialogContent sx={{ minWidth: 400, py: 2 }}>
+        <DialogContent sx={{ minWidth: { xs: 0, sm: 400 }, py: 2 }}>
           <Typography variant="body2" sx={{ mb: 2 }}>Ingresa la clave maestra para eliminar esta comanda.</Typography>
           <TextField 
             fullWidth 
@@ -854,7 +853,7 @@ const MesasPage = () => {
       </Dialog>
 
       {/* Propina Sugerida para Imprimir Cuenta */}
-      <Dialog open={openPropina} onClose={() => { setOpenPropina(false); setValorPropina(''); }} PaperProps={{ sx: { borderRadius: 3, minWidth: 400 } }}>
+      <Dialog open={openPropina} onClose={() => { setOpenPropina(false); setValorPropina(''); }} PaperProps={{ sx: { borderRadius: 3, minWidth: { xs: 0, sm: 400 } } }}>
         <DialogTitle sx={{ fontWeight: 700 }}>Propina</DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <FormControl fullWidth size="small" sx={{ mb: 2, mt: 2 }}>

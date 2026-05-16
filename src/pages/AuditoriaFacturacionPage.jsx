@@ -111,9 +111,9 @@ const AuditoriaFacturacionPage = () => {
   }, [eliminadas]);
 
   return (
-    <Box sx={{ p: 4, backgroundColor: '#f5f7fa', minHeight: '100vh' }}>
+    <Box sx={{ p: { xs: 0, md: 4 }, backgroundColor: '#f5f7fa', minHeight: '100vh' }}>
       {/* ENCABEZADO CON ESTADÍSTICAS */}
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 3 }}>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'flex-start' }, flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
         {/* TÍTULO A LA IZQUIERDA */}
         <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -129,7 +129,7 @@ const AuditoriaFacturacionPage = () => {
 
         {/* TARJETA TOTAL ELIMINADAS A LA DERECHA */}
         {estadisticas && !loading && (
-          <Card sx={{ borderRadius: 2, boxShadow: 1, minWidth: 200, minHeight: 'fit-content' }}>
+          <Card sx={{ borderRadius: 2, boxShadow: 1, minWidth: { xs: 0, md: 200 }, minHeight: 'fit-content' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <AssignmentIcon sx={{ fontSize: 40, color: '#e94560' }} />
@@ -148,12 +148,12 @@ const AuditoriaFacturacionPage = () => {
       </Box>
 
       {/* FILTROS */}
-      <Paper sx={{ p: 3, mb: 4, borderRadius: 2, boxShadow: 1 }}>
+      <Paper sx={{ p: { xs: 2, md: 3 }, mb: 4, borderRadius: 2, boxShadow: 1 }}>
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: '#2c3e50' }}>
           Filtros
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end' }}>
-          <Box sx={{ width: '15%' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-end', flexDirection: { xs: 'column', md: 'row' } }}>
+          <Box sx={{ width: { xs: '100%', md: '15%' } }}>
             <TextField
               fullWidth
               type="date"
@@ -165,7 +165,7 @@ const AuditoriaFacturacionPage = () => {
               sx={{ '& .MuiInputBase-input': { fontSize: '0.85rem' } }}
             />
           </Box>
-          <Box sx={{ width: '15%' }}>
+          <Box sx={{ width: { xs: '100%', md: '15%' } }}>
             <TextField
               fullWidth
               type="date"
@@ -177,7 +177,7 @@ const AuditoriaFacturacionPage = () => {
               sx={{ '& .MuiInputBase-input': { fontSize: '0.85rem' } }}
             />
           </Box>
-          <Box sx={{ width: '35%' }}>
+          <Box sx={{ width: { xs: '100%', md: '35%' } }}>
             <FormControl fullWidth size="small">
               <InputLabel sx={{ fontSize: '0.85rem' }}>Usuario Admin</InputLabel>
               <Select
@@ -195,7 +195,7 @@ const AuditoriaFacturacionPage = () => {
               </Select>
             </FormControl>
           </Box>
-          <Box sx={{ display: 'flex', gap: 0.5, flex: 1 }}>
+          <Box sx={{ display: 'flex', gap: 0.5, flex: 1, width: { xs: '100%', md: 'auto' } }}>
             <Button
               size="small"
               variant="contained"

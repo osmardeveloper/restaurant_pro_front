@@ -296,7 +296,7 @@ const ComandasPage = () => {
       </Box>
 
       {/* Filtros - Una sola línea */}
-      <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mb: 3, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', gap: 1.5, alignItems: { xs: 'stretch', sm: 'center' }, mb: 3, flexWrap: 'wrap' }}>
         {/* Filtros de Facturación */}
         <Chip 
           label="Todas" 
@@ -355,7 +355,7 @@ const ComandasPage = () => {
           onChange={(e) => { setFechaDesde(e.target.value); setPage(0); }}
           InputLabelProps={{ shrink: true }}
           size="small"
-          sx={{ width: 140 }}
+          sx={{ width: { xs: 'calc(50% - 6px)', sm: 140 } }}
         />
         <TextField
           type="date"
@@ -364,7 +364,7 @@ const ComandasPage = () => {
           onChange={(e) => { setFechaHasta(e.target.value); setPage(0); }}
           InputLabelProps={{ shrink: true }}
           size="small"
-          sx={{ width: 140 }}
+          sx={{ width: { xs: 'calc(50% - 6px)', sm: 140 } }}
         />
         {(fechaDesde || fechaHasta) && (
           <Button
@@ -535,9 +535,9 @@ const ComandasPage = () => {
           Modificar Productos de Comanda
         </DialogTitle>
         <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flex: 1, minHeight: 0, overflow: { xs: 'auto', md: 'hidden' } }}>
             {/* Buscador de Productos (Izq) */}
-            <Box sx={{ flex: 2, p: 3, borderRight: '1px solid rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Box sx={{ flex: 2, p: { xs: 2, md: 3 }, borderRight: { md: '1px solid rgba(0,0,0,0.08)' }, borderBottom: { xs: '1px solid rgba(0,0,0,0.08)', md: 'none' }, display: 'flex', flexDirection: 'column', overflow: { xs: 'visible', md: 'hidden' }, minHeight: 0 }}>
               <TextField 
                  fullWidth size="small" placeholder="Buscar producto para agregar..." 
                  value={busquedaProd} onChange={e => setBusquedaProd(e.target.value)}
@@ -562,7 +562,7 @@ const ComandasPage = () => {
             </Box>
             
             {/* Carrito de la Mesa (Der) */}
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa' }}>
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa', minHeight: { xs: 320, md: 'auto' } }}>
               <Box sx={{ p: 2, bgcolor: '#f0f0f0', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
                 <Typography variant="subtitle2" fontWeight={700}>Productos Actuales</Typography>
               </Box>
@@ -784,7 +784,7 @@ const ComandasPage = () => {
       </Dialog>
 
       {/* Modal Propina Sugerida para Imprimir Cuenta */}
-      <Dialog open={openPropina} onClose={() => { setOpenPropina(false); setValorPropina(''); }} PaperProps={{ sx: { borderRadius: 3, minWidth: 400 } }}>
+      <Dialog open={openPropina} onClose={() => { setOpenPropina(false); setValorPropina(''); }} PaperProps={{ sx: { borderRadius: 3, minWidth: { xs: 0, sm: 400 } } }}>
         <DialogTitle sx={{ fontWeight: 700 }}>Propina</DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <FormControl fullWidth size="small" sx={{ mb: 2, mt: 2 }}>

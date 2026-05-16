@@ -746,9 +746,9 @@ const FacturacionPage = () => {
   };
 
   return (
-    <Box sx={{ width: 'calc(100% + 48px)', ml: -3, mr: -3, px: 3 }}>
+    <Box sx={{ width: { xs: '100%', md: 'calc(100% + 48px)' }, ml: { xs: 0, md: -3 }, mr: { xs: 0, md: -3 }, px: { xs: 0, md: 3 } }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={tab} onChange={(e, val) => setTab(val)} textColor="primary" indicatorColor="primary">
+        <Tabs value={tab} onChange={(e, val) => setTab(val)} textColor="primary" indicatorColor="primary" variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
           <Tab icon={<TodayIcon />} label="Ventas de Hoy" iconPosition="start" />
           <Tab icon={<AssessmentIcon />} label="Listado General" iconPosition="start" />
           {(usuario?.rol === 'cajero' || usuario?.rol === 'admin') && (
@@ -876,8 +876,8 @@ const FacturacionPage = () => {
 
           {/* ÁREA DERECHA: RESUMEN - Ocupando toda la página */}
           <Box sx={{ width: '100%' }}>
-            <Paper elevation={6} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(233,69,96,0.1)', bgcolor: '#fff', display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 280px)' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3, pb: 2, borderBottom: '3px solid #e94560' }}>
+            <Paper elevation={6} sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, border: '1px solid rgba(233,69,96,0.1)', bgcolor: '#fff', display: 'flex', flexDirection: 'column', minHeight: { xs: 'auto', md: 'calc(100vh - 280px)' } }}>
+              <Box sx={{ display: 'flex', alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3, pb: 2, borderBottom: '3px solid #e94560' }}>
                 <Typography variant="h6" fontWeight={900}>RESUMEN</Typography>
                 {pedidoActual.length === 0 && !idComandaVinculada && (
                   <Box sx={{ 
@@ -963,7 +963,7 @@ const FacturacionPage = () => {
                     {a_domicilio && (
                       <Box sx={{ mb: 2, p: 2, borderRadius: 2, bgcolor: 'rgba(76,175,80,0.1)', border: '1px dashed #4caf50' }}>
                         <Typography variant="caption" fontWeight={700} color="#4caf50" display="block" sx={{ mb: 1 }}>🚚 VALOR DEL DOMICILIO</Typography>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
                           <TextField
                             size="small"
                             type="number"
@@ -976,7 +976,7 @@ const FacturacionPage = () => {
                             InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
                             sx={{ flex: 1 }}
                           />
-                          <FormControl size="small" sx={{ minWidth: 140 }}>
+                          <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 140 } }}>
                             <InputLabel>Pago</InputLabel>
                             <Select
                               value={metodoPagoDomicilio}
@@ -1055,7 +1055,7 @@ const FacturacionPage = () => {
                       {a_domicilio && (
                         <Box sx={{ mb: 2, p: 2, borderRadius: 1, bgcolor: 'rgba(76,175,80,0.08)', border: '1px dashed #4caf50' }}>
                           <Typography variant="caption" fontWeight={700} color="#4caf50" display="block" sx={{ mb: 1 }}>🚚 VALOR DEL DOMICILIO</Typography>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
                             <TextField
                               size="small"
                               type="number"
@@ -1068,7 +1068,7 @@ const FacturacionPage = () => {
                               InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
                               sx={{ flex: 1 }}
                             />
-                            <FormControl size="small" sx={{ minWidth: 140 }}>
+                            <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 140 } }}>
                               <InputLabel>Pago</InputLabel>
                               <Select
                                 value={metodoPagoDomicilio}
@@ -1101,7 +1101,7 @@ const FacturacionPage = () => {
 
                     {renderPropinas()}
 
-                    <Box sx={{ display: 'flex', gap: 1, mt: 'auto' }}>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 'auto', flexDirection: { xs: 'column', sm: 'row' } }}>
                       <Button
                         fullWidth variant="outlined" color="error" onClick={cancelarDividirCuenta} sx={{ borderRadius: 2 }}
                       >
@@ -1129,7 +1129,7 @@ const FacturacionPage = () => {
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
           <Grid container spacing={2} sx={{ mb: 3 }}>
             <Grid item xs={12} sm={6} md={4}>
-              <FormControl fullWidth size="small" style={{minWidth: "150px"}}>
+              <FormControl fullWidth size="small" sx={{ minWidth: 0 }}>
                 <InputLabel>Filtrar por Destino</InputLabel>
                 <Select value={filtroDestino} label="Filtrar por Destino" onChange={e => setFiltroDestino(e.target.value)}>
                   <MenuItem value="todos">Todos</MenuItem>
@@ -1194,7 +1194,7 @@ const FacturacionPage = () => {
               />
             </Grid>
             <Grid item xs={12} sm={4} md={2.5}>
-              <FormControl fullWidth size="small" style={{minWidth: "150px"}}>
+              <FormControl fullWidth size="small" sx={{ minWidth: 0 }}>
                 <InputLabel>Méteodo de Pago</InputLabel>
                 <Select value={filtroMetodoPago} label="Método de Pago" onChange={e => setFiltroMetodoPago(e.target.value)}>
                   <MenuItem value="todos">Todos</MenuItem>
@@ -1213,7 +1213,7 @@ const FacturacionPage = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={4} md={2.5}>
-              <FormControl fullWidth size="small" style={{minWidth: "150px"}}>
+              <FormControl fullWidth size="small" sx={{ minWidth: 0 }}>
                 <InputLabel>Método Propina</InputLabel>
                 <Select value={filtroMetodoPropina} label="Método Propina" onChange={e => setFiltroMetodoPropina(e.target.value)}>
                   <MenuItem value="todos">Todos</MenuItem>
@@ -1222,7 +1222,7 @@ const FacturacionPage = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={4} md={2.5}>
-              <FormControl fullWidth size="small" style={{minWidth: "150px"}}>
+              <FormControl fullWidth size="small" sx={{ minWidth: 0 }}>
                 <InputLabel>Filtrar por Destino</InputLabel>
                 <Select value={filtroDestino} label="Filtrar por Destino" onChange={e => setFiltroDestino(e.target.value)}>
                   <MenuItem value="todos">Todos</MenuItem>
@@ -1307,7 +1307,7 @@ const FacturacionPage = () => {
               <Autocomplete
                 multiple
                 options={platos}
-                style={{width: '30vw'}}
+                sx={{ width: '100%' }}
                 getOptionLabel={(o) => o.nombre || ''}
                 value={platos.filter(p => productosSeleccionados.includes(p._id))}
                 onChange={(_, val) => setProductosSeleccionados(val.map(v => v._id))}
@@ -1568,11 +1568,11 @@ const FacturacionPage = () => {
           Registrar Nuevo Cliente
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
             <TextField fullWidth label="Nombre" value={formCliente.nombre} onChange={e => setFormCliente(p => ({ ...p, nombre: e.target.value }))} margin="normal" size="small"/>
             <TextField fullWidth label="Apellido" value={formCliente.apellido} onChange={e => setFormCliente(p => ({ ...p, apellido: e.target.value }))} margin="normal" size="small"/>
           </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
             <TextField
               select
               fullWidth

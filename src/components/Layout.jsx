@@ -105,9 +105,9 @@ const Layout = () => {
   }, [loadingPermisos, permisos, location.pathname, itemsPermitidos, navigate, usuario?.rol]);
 
   const drawerContent = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' }}>
-      <Box sx={{ p: 2, pb: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 1.5, mb: 1 }}>
-        <Box component="img" src="/images/logo_la_perla.png" alt="Logo La Perla" sx={{ width: 150, height: 150, borderRadius: '20px', objectFit: 'cover', border: '5px solid #fff', mt: 1 }} />
+    <Box sx={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' }}>
+      <Box sx={{ p: { xs: 1.5, sm: 2 }, pb: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 1, mb: 1 }}>
+        <Box component="img" src="/images/logo_la_perla.png" alt="Logo La Perla" sx={{ width: { xs: 104, sm: 132 }, height: { xs: 104, sm: 132 }, borderRadius: '18px', objectFit: 'cover', border: '4px solid #fff', mt: 0.5 }} />
         <Box>
           <Typography variant="body1" sx={{ color: '#fff', fontWeight: 700, lineHeight: 1.2, fontSize: '1.1rem' }}>
             RestaurantPro
@@ -122,15 +122,16 @@ const Layout = () => {
           <CircularProgress size={24} sx={{ color: '#e94560' }} />
         </Box>
       ) : (
-        <List sx={{ flex: 1, px: 1, overflowY: 'auto' }}>
+        <List sx={{ flex: 1, minHeight: 0, px: 1, py: 1, overflowY: 'auto' }}>
           {itemsPermitidos.map(({ label, path, icon }) => {
             const isActive = location.pathname.startsWith(path);
             return (
               <ListItem key={path} disablePadding sx={{ mb: 0.5 }}>
                 <ListItemButton
-                  onClick={() => navigate(path)}
+                  onClick={() => { navigate(path); setMobileOpen(false); }}
                   sx={{
                     borderRadius: 2,
+                    minHeight: 44,
                     color: isActive ? '#fff' : 'rgba(255,255,255,0.6)',
                     background: isActive ? 'linear-gradient(135deg, #e94560, #c62a47)' : 'transparent',
                     '&:hover': { background: isActive ? 'linear-gradient(135deg, #e94560, #c62a47)' : 'rgba(255,255,255,0.07)', color: '#fff' },
@@ -146,7 +147,7 @@ const Layout = () => {
         </List>
       )}
 
-      <Box sx={{ p: 2 }}>
+      <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
         <ListItemButton
           onClick={handleLogout}
           sx={{ borderRadius: 2, color: 'rgba(255,255,255,0.5)', '&:hover': { color: '#e94560', background: 'rgba(233,69,96,0.1)' }, transition: 'all 0.2s ease' }}
@@ -159,7 +160,7 @@ const Layout = () => {
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', background: '#f0f2f5' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', width: '100%', minWidth: 0, background: '#f0f2f5' }}>
       <CssBaseline />
       <AppBar
         position="fixed"
@@ -172,18 +173,18 @@ const Layout = () => {
           borderBottom: '1px solid rgba(0,0,0,0.08)',
         }}
       >
-        <Toolbar>
-          <IconButton edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2, display: { sm: 'none' }, color: '#1a1a2e' }}>
+        <Toolbar sx={{ minHeight: { xs: 56, sm: 64 }, px: { xs: 1.5, sm: 3 }, gap: { xs: 1, sm: 2 } }}>
+          <IconButton edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ display: { sm: 'none' }, color: '#1a1a2e' }}>
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" sx={{ color: '#1a1a2e', fontWeight: 600, flex: 1 }}>
+          <Typography variant="h6" noWrap sx={{ color: '#1a1a2e', fontWeight: 700, flex: 1, minWidth: 0, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             {navItems.find(n => location.pathname.startsWith(n.path))?.label || 'RestaurantPro'}
           </Typography>
           
           {usuario && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mr: 1 }}>
-              <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="body1" sx={{ color: '#1a1a2e', fontWeight: 700 }}>
+            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2, mr: 1 }}>
+              <Box sx={{ textAlign: 'right', maxWidth: 220 }}>
+                <Typography variant="body1" noWrap sx={{ color: '#1a1a2e', fontWeight: 700 }}>
                   {usuario.nombre}
                 </Typography>
                 <Chip
@@ -232,7 +233,17 @@ const Layout = () => {
         {drawerContent}
       </Drawer>
 
-      <Box component="main" sx={{ flexGrow: 1, p: 3, mt: '64px' }}>
+      <Box
+        component="main"
+        className="app-main-content"
+        sx={{
+          flexGrow: 1,
+          minWidth: 0,
+          width: { xs: '100%', sm: `calc(100% - ${DRAWER_WIDTH}px)` },
+          p: { xs: 1.5, sm: 2, md: 3 },
+          mt: { xs: '56px', sm: '64px' },
+        }}
+      >
         <Outlet />
       </Box>
     </Box>

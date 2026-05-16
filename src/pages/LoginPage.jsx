@@ -56,12 +56,9 @@ const LoginPage = () => {
         alignItems: 'center',
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-        p: 2,
+        p: { xs: 1.5, sm: 2 },
       }}
     >
-      <Box sx={{ position: 'fixed', top: '-10%', right: '-5%', width: 400, height: 400, borderRadius: '50%', background: 'rgba(233,69,96,0.15)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-      <Box sx={{ position: 'fixed', bottom: '-10%', left: '-5%', width: 350, height: 350, borderRadius: '50%', background: 'rgba(15,52,96,0.6)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-
       <Card
         elevation={0}
         sx={{
@@ -73,19 +70,19 @@ const LoginPage = () => {
           border: '1px solid rgba(255,255,255,0.12)',
         }}
       >
-        <CardContent sx={{ p: 4 }}>
+        <CardContent sx={{ p: { xs: 2.5, sm: 4 } }}>
           <Box sx={{ textAlign: 'center', mb: 2 }}>
             <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center' }}>
-              <img src="/images/logo_la_perla.png" alt="Logo La Perla" style={{ maxWidth: 240, height: 'auto', borderRadius: '12px', border: '6px solid #fff' }} />
+              <Box component="img" src="/images/logo_la_perla.png" alt="Logo La Perla" sx={{ width: { xs: 170, sm: 240 }, height: 'auto', borderRadius: '12px', border: '6px solid #fff' }} />
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}>
-              <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #e94560, #c62a47)', boxShadow: '0 4px 16px rgba(233,69,96,0.3)' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: { xs: 1, sm: 1.5 }, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: { xs: 40, sm: 48 }, height: { xs: 40, sm: 48 }, borderRadius: '50%', background: 'linear-gradient(135deg, #e94560, #c62a47)', boxShadow: '0 4px 16px rgba(233,69,96,0.3)' }}>
                 <RestaurantIcon sx={{ color: '#fff', fontSize: 24 }} />
               </Box>
-              <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, letterSpacing: '-0.5px' }}>
+              <Typography variant="h4" sx={{ color: '#fff', fontWeight: 700, fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
                 RestaurantPro
               </Typography>
-              <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #e94560, #c62a47)', boxShadow: '0 4px 16px rgba(233,69,96,0.3)' }}>
+              <Box sx={{ display: { xs: 'none', sm: 'inline-flex' }, alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #e94560, #c62a47)', boxShadow: '0 4px 16px rgba(233,69,96,0.3)' }}>
                 <BrunchDiningIcon sx={{ color: '#fff', fontSize: 28, ml: -0.5 }} />
               </Box>
             </Box>

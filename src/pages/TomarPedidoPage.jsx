@@ -252,7 +252,7 @@ const TomarPedidoPage = () => {
         </Box>
       </Box>
 
-      <Box sx={{ width: 'calc(100% + 48px)', ml: -3, mr: -3, px: 3, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+      <Box sx={{ width: { xs: '100%', md: 'calc(100% + 48px)' }, ml: { xs: 0, md: -3 }, mr: { xs: 0, md: -3 }, px: { xs: 0, md: 3 }, display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 2, alignItems: 'flex-start' }}>
         {/* Columna Izquierda: Selección */}
         <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           
@@ -267,7 +267,7 @@ const TomarPedidoPage = () => {
                     options={mesas}
                     getOptionLabel={(option) => option ? `Mesa #${option.numero_mesa}` : ''}
                     value={selectedMesa}
-                    style={{minWidth: "300px"}}
+                    sx={{ width: '100%' }}
                     onChange={(_, val) => {
                       setSelectedMesa(val);
                       if (val) {
@@ -406,8 +406,8 @@ const TomarPedidoPage = () => {
         </Box>
 
         {/* Columna Derecha: Carrito */}
-        <Box sx={{ width: 388, flexShrink: 0, position: 'sticky', top: 84 }}>
-          <Paper elevation={0} sx={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 180px)', minHeight: 400, borderRadius: 3, border: '1px solid', borderColor: selectedMesa ? 'rgba(0,0,0,0.08)' : 'warning.main', overflow: 'hidden' }}>
+        <Box sx={{ width: { xs: '100%', lg: 388 }, flexShrink: 0, position: { xs: 'static', lg: 'sticky' }, top: 84 }}>
+          <Paper elevation={0} sx={{ display: 'flex', flexDirection: 'column', height: { xs: 'auto', lg: 'calc(100vh - 180px)' }, maxHeight: { xs: 'none', lg: 'calc(100vh - 180px)' }, minHeight: { xs: 0, lg: 400 }, borderRadius: 3, border: '1px solid', borderColor: selectedMesa ? 'rgba(0,0,0,0.08)' : 'warning.main', overflow: 'hidden' }}>
             <Box sx={{ p: 2, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', color: '#fff' }}>
                <Typography variant="h6" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                  <AddShoppingCartIcon /> Resumen Pedido
@@ -417,7 +417,7 @@ const TomarPedidoPage = () => {
                )}
             </Box>
             
-            <List sx={{ flex: 1, overflowY: 'auto', p: 0 }}>
+            <List sx={{ flex: 1, maxHeight: { xs: 420, lg: 'none' }, overflowY: 'auto', p: 0 }}>
               {carrito.length === 0 ? (
                 <Box sx={{ p: 4, textAlign: 'center', opacity: 0.5 }}>
                    <AddShoppingCartIcon sx={{ fontSize: 48, mb: 1 }} />
@@ -523,11 +523,11 @@ const TomarPedidoPage = () => {
           Crear Cliente Rápido
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
             <TextField fullWidth label="Nombre" value={formCliente.nombre} onChange={e => setFormCliente(p => ({ ...p, nombre: e.target.value }))} margin="normal" size="small"/>
             <TextField fullWidth label="Apellido" value={formCliente.apellido} onChange={e => setFormCliente(p => ({ ...p, apellido: e.target.value }))} margin="normal" size="small"/>
           </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
             <TextField
               select
               fullWidth

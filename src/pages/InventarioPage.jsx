@@ -123,7 +123,7 @@ const InventarioPage = () => {
   return (
     <Box>
       {/* CABECERA */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, flexDirection: { xs: 'column', md: 'row' }, gap: 2, mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Box sx={{ p: 1.5, borderRadius: 3, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', boxShadow: '0 8px 16px rgba(0,0,0,0.1)' }}>
             <InventoryIcon sx={{ color: '#fff', fontSize: 28 }} />
@@ -134,7 +134,7 @@ const InventarioPage = () => {
           </Box>
         </Box>
         
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, flexDirection: { xs: 'column', sm: 'row' }, width: { xs: '100%', md: 'auto' } }}>
           <Button 
             variant="contained" 
             startIcon={<AddIcon />} 
@@ -159,6 +159,9 @@ const InventarioPage = () => {
         <Tabs 
           value={tab} 
           onChange={(e, val) => setTab(val)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
           sx={{ borderBottom: '1px solid rgba(0,0,0,0.05)', bgcolor: '#fff' }}
           TabIndicatorProps={{ sx: { height: 4, borderRadius: '4px 4px 0 0' } }}
         >
@@ -166,16 +169,16 @@ const InventarioPage = () => {
           <Tab icon={<ArrowDownwardIcon />} label="Salidas" iconPosition="start" sx={{ px: 4, py: 2, fontWeight: 700 }} />
         </Tabs>
         
-        <Box sx={{ p: 3, display: 'flex', gap: 3, alignItems: 'center', bgcolor: '#fff' }}>
+        <Box sx={{ p: { xs: 2, md: 3 }, display: 'flex', gap: 2, alignItems: { xs: 'stretch', md: 'center' }, flexDirection: { xs: 'column', md: 'row' }, bgcolor: '#fff' }}>
           <TextField
             label="FECHA INICIO" type="date" size="small" InputLabelProps={{ shrink: true }}
             value={fechaDesde} onChange={e => setFechaDesde(e.target.value)}
-            sx={{ width: 250 }}
+            sx={{ width: { xs: '100%', md: 250 } }}
           />
           <TextField
             label="FECHA FIN" type="date" size="small" InputLabelProps={{ shrink: true }}
             value={fechaHasta} onChange={e => setFechaHasta(e.target.value)}
-            sx={{ width: 250 }}
+            sx={{ width: { xs: '100%', md: 250 } }}
           />
           <Button variant="text" size="small" color="inherit" onClick={() => { setFechaDesde(''); setFechaHasta(''); }}>Limpiar Filtros</Button>
         </Box>
@@ -262,9 +265,9 @@ const InventarioPage = () => {
                   onChange={(_, val) => setProdTemp(val)}
                   renderInput={(params) => <TextField {...params} label="Buscar Producto" placeholder="Nombre del producto..." />}
                 />
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' } }}>
                   <TextField
-                    label="Cantidad" type="number" size="small" sx={{ width: 130 }}
+                    label="Cantidad" type="number" size="small" sx={{ width: { xs: '100%', sm: 130 } }}
                     value={cantTemp} onChange={e => setCantTemp(e.target.value)}
                   />
                   <Button 
