@@ -3,10 +3,10 @@
 // ============================================================
 import { useState, useEffect } from 'react';
 import {
-  Box, Button, Typography, Paper, Grid, Divider, Autocomplete, TextField,
-  IconButton, List, ListItem, ListItemText, ListItemSecondaryAction,
+  Box, Button, Typography, Paper, Divider, Autocomplete, TextField,
+  IconButton, List, ListItem, ListItemText,
   Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Chip,
-  InputAdornment, Card, CardContent, CardActionArea, Tooltip, Switch, FormControlLabel
+  InputAdornment, Card, CardActionArea, Tooltip, Switch, FormControlLabel
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -17,6 +17,9 @@ import PostAddIcon      from '@mui/icons-material/PostAdd';
 import PersonAddIcon    from '@mui/icons-material/PersonAdd';
 import SearchIcon       from '@mui/icons-material/Search';
 import PrintIcon        from '@mui/icons-material/Print';
+import TableBarIcon     from '@mui/icons-material/TableBar';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import StorefrontIcon   from '@mui/icons-material/Storefront';
 import { clienteService, mesaService, productoService, comandaService, categoriasProductosService } from '../services/api';
 import { agruparLineasPedido, calcularTotalLineasPedido, formatearObservacion } from '../utils/comandaItems';
 
@@ -241,57 +244,64 @@ const TomarPedidoPage = () => {
   });
 
   return (
-    <Box sx={{ pb: 5 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+    <Box sx={{ pb: 5, width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, minWidth: 0 }}>
         <Box sx={{ p: 1, borderRadius: 2, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)' }}>
           <PostAddIcon sx={{ color: '#fff', display: 'block' }} />
         </Box>
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography variant="h5" fontWeight={700} color="#1a1a2e">Tomar Pedido</Typography>
           <Typography variant="body2" color="text.secondary">Gestión rápida de comandas en sala</Typography>
         </Box>
       </Box>
 
-      <Box sx={{ width: { xs: '100%', md: 'calc(100% + 48px)' }, ml: { xs: 0, md: -3 }, mr: { xs: 0, md: -3 }, px: { xs: 0, md: 3 }, display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 2, alignItems: 'flex-start' }}>
+      <Box sx={{ width: '100%', maxWidth: '100%', display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 2, alignItems: 'flex-start', overflowX: 'hidden' }}>
         {/* Columna Izquierda: Selección */}
-        <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ flexGrow: 1, width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           
           {/* Selección de Mesa / Pedido a Domicilio */}
-          <Paper elevation={0} sx={{ p: 3, mb: 2, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
-            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Mesa de Destino / Pedido a Domicilio</Typography>
-            <Grid container spacing={2}>
-              {/* Columna Izquierda: Selector de Mesa (visible solo si no es a domicilio) */}
-              <Grid item xs={12} sm={6}>
-                {!a_domicilio && (
-                  <Autocomplete
-                    options={mesas}
-                    getOptionLabel={(option) => option ? `Mesa #${option.numero_mesa}` : ''}
-                    value={selectedMesa}
-                    sx={{ width: '100%' }}
-                    onChange={(_, val) => {
-                      setSelectedMesa(val);
-                      if (val) {
-                        setVenta_directa(false);
-                        setA_domicilio(false);
-                      }
-                    }}
-                    renderInput={(params) => <TextField {...params} label="Seleccionar Mesa (Solo Libres) *" size="small" />}
-                    noOptionsText="Sin mesas libres"
-                  />
-                )}
-                {a_domicilio && (
-                  <TextField
-                    label="Seleccionar Mesa (Solo Libres)"
-                    size="small"
-                    disabled
-                    placeholder="Deshabilitado para pedidos a domicilio"
-                    fullWidth
-                  />
-                )}
-              </Grid>
+          <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 0, sm: 1 }, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Destino del pedido</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, minWidth: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, minWidth: 0 }}>
+                <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: 'rgba(15,52,96,0.08)', color: '#0f3460', display: { xs: 'none', sm: 'flex' }, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <TableBarIcon fontSize="small" />
+                </Box>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.75 }}>Mesa destino</Typography>
+                  {!a_domicilio && (
+                    <Autocomplete
+                      options={mesas}
+                      getOptionLabel={(option) => option ? `Mesa #${option.numero_mesa}` : ''}
+                      value={selectedMesa}
+                      sx={{ width: '100%' }}
+                      onChange={(_, val) => {
+                        setSelectedMesa(val);
+                        if (val) {
+                          setVenta_directa(false);
+                          setA_domicilio(false);
+                        }
+                      }}
+                      renderInput={(params) => <TextField {...params} label="Seleccionar Mesa (Solo Libres) *" size="small" />}
+                      noOptionsText="Sin mesas libres"
+                    />
+                  )}
+                  {a_domicilio && (
+                    <TextField
+                      label="Seleccionar Mesa (Solo Libres)"
+                      size="small"
+                      disabled
+                      placeholder="Deshabilitado para pedidos a domicilio"
+                      fullWidth
+                    />
+                  )}
+                </Box>
+              </Box>
 
-              {/* Columna Derecha: Switches */}
-              <Grid item xs={12} sm={6} sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', gap: 2, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.25, border: '1px solid rgba(0,0,0,0.08)', borderRadius: 2, minWidth: 0 }}>
+                <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: 'rgba(233,69,96,0.1)', color: '#e94560', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <LocalShippingIcon fontSize="small" />
+                </Box>
                 <FormControlLabel
                   control={
                     <Switch
@@ -307,8 +317,15 @@ const TomarPedidoPage = () => {
                     />
                   }
                   label="Pedido a Domicilio"
-                  sx={{ m: 0 }}
+                  sx={{ m: 0, width: '100%', justifyContent: 'space-between', '& .MuiFormControlLabel-label': { fontWeight: 700, fontSize: { xs: '0.9rem', sm: '1rem' } } }}
+                  labelPlacement="start"
                 />
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.25, border: '1px solid rgba(0,0,0,0.08)', borderRadius: 2, minWidth: 0 }}>
+                <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: 'rgba(76,175,80,0.12)', color: '#2e7d32', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <StorefrontIcon fontSize="small" />
+                </Box>
                 <FormControlLabel
                   control={
                     <Switch
@@ -324,14 +341,15 @@ const TomarPedidoPage = () => {
                     />
                   }
                   label="Venta Directa"
-                  sx={{ m: 0 }}
+                  sx={{ m: 0, width: '100%', justifyContent: 'space-between', '& .MuiFormControlLabel-label': { fontWeight: 700, fontSize: { xs: '0.9rem', sm: '1rem' } } }}
+                  labelPlacement="start"
                 />
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
           </Paper>
 
           {/* Información del Cliente */}
-          <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
+          <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 0, sm: 1 }, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
             <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>Datos del Cliente</Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               <Autocomplete
@@ -356,7 +374,7 @@ const TomarPedidoPage = () => {
           </Paper>
 
           {/* Menú de Productos */}
-          <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)' }}>
+          <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
               <Typography variant="h6" fontWeight={700}>Productos</Typography>
               <TextField 
@@ -370,7 +388,7 @@ const TomarPedidoPage = () => {
             </Box>
 
             {/* Filtro por Categorías */}
-            <Box sx={{ display: 'flex', gap: 1, mb: 3, overflowX: 'auto', pb: 1, '&::-webkit-scrollbar': { height: 4 } }}>
+            <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap', maxWidth: '100%' }}>
               {[{ value: 'todas', label: 'Todas' }, ...categorias].map(cat => (
                 <Chip 
                   key={cat.value} 
@@ -378,36 +396,47 @@ const TomarPedidoPage = () => {
                   onClick={() => setCategoria(cat.value)}
                   color={categoria === cat.value ? 'primary' : 'default'}
                   variant={categoria === cat.value ? 'filled' : 'outlined'}
-                  sx={{ textTransform: 'capitalize', fontWeight: 600 }}
+                  sx={{ textTransform: 'capitalize', fontWeight: 600, maxWidth: '100%', '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }}
                 />
               ))}
             </Box>
-            <Grid container spacing={1.5} sx={{ maxHeight: '70vh', overflowY: 'auto', p: 1 }}>
+            <Box sx={{
+              maxHeight: { xs: 'none', lg: '70vh' },
+              overflowY: { xs: 'visible', lg: 'auto' },
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: 'minmax(0, 1fr)',
+                sm: 'repeat(2, minmax(0, 1fr))',
+                md: 'repeat(3, minmax(0, 1fr))',
+                xl: 'repeat(4, minmax(0, 1fr))',
+              },
+              gap: 1.5,
+              pr: { xs: 0, lg: 0.5 },
+              minWidth: 0,
+            }}>
               {prodFiltrados.map(prod => (
-                <Grid item xs={6} sm={4} md={3} lg={2} xl={1.5} key={prod._id}>
-                  <Card elevation={0} sx={{ border: '1px solid rgba(0,0,0,0.1)', borderRadius: 3, transition: 'all 0.2s', '&:hover': { borderColor: '#e94560', transform: 'translateY(-2px)' } }}>
-                    <CardActionArea onClick={() => agregarProducto(prod)} sx={{ p: 2 }}>
-                       <Typography variant="subtitle2" fontWeight={700} noWrap>{prod.nombre}</Typography>
-                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                         <Typography variant="body2" color="#4caf50" fontWeight={600}>
+                  <Card key={prod._id} elevation={0} sx={{ minWidth: 0, border: '1px solid rgba(0,0,0,0.1)', borderRadius: 2, transition: 'all 0.2s', '&:hover': { borderColor: '#e94560', transform: { xs: 'none', sm: 'translateY(-2px)' } } }}>
+                    <CardActionArea onClick={() => agregarProducto(prod)} sx={{ p: 2, minHeight: { xs: 94, sm: 112 }, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'space-between', gap: 1 }}>
+                       <Typography variant="subtitle2" fontWeight={700} sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.25 }}>{prod.nombre}</Typography>
+                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                         <Typography variant="body2" color="#4caf50" fontWeight={600} sx={{ minWidth: 0 }}>
                            {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(prod.precio)}
                          </Typography>
-                         <Chip label={prod.tipo} size="small" sx={{ fontSize: '0.65rem', height: 20 }} />
+                         <Chip label={prod.tipo} size="small" sx={{ fontSize: '0.65rem', height: 20, maxWidth: '45%', flexShrink: 0, '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }} />
                        </Box>
                     </CardActionArea>
                   </Card>
-                </Grid>
               ))}
               {prodFiltrados.length === 0 && (
-                <Typography variant="body2" sx={{ m: 2, color: 'text.secondary' }}>No hay productos coincidentes.</Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>No hay productos coincidentes.</Typography>
               )}
-            </Grid>
+            </Box>
           </Paper>
         </Box>
 
         {/* Columna Derecha: Carrito */}
-        <Box sx={{ width: { xs: '100%', lg: 388 }, flexShrink: 0, position: { xs: 'static', lg: 'sticky' }, top: 84 }}>
-          <Paper elevation={0} sx={{ display: 'flex', flexDirection: 'column', height: { xs: 'auto', lg: 'calc(100vh - 180px)' }, maxHeight: { xs: 'none', lg: 'calc(100vh - 180px)' }, minHeight: { xs: 0, lg: 400 }, borderRadius: 3, border: '1px solid', borderColor: selectedMesa ? 'rgba(0,0,0,0.08)' : 'warning.main', overflow: 'hidden' }}>
+        <Box sx={{ width: { xs: '100%', lg: 388 }, maxWidth: '100%', minWidth: 0, flexShrink: 0, position: { xs: 'static', lg: 'sticky' }, top: 84 }}>
+          <Paper elevation={0} sx={{ display: 'flex', flexDirection: 'column', height: { xs: 'auto', lg: 'calc(100vh - 180px)' }, maxHeight: { xs: 'none', lg: 'calc(100vh - 180px)' }, minHeight: { xs: 0, lg: 400 }, borderRadius: 2, border: '1px solid', borderColor: selectedMesa || a_domicilio || venta_directa ? 'rgba(0,0,0,0.08)' : 'warning.main', overflow: 'hidden' }}>
             <Box sx={{ p: 2, background: 'linear-gradient(135deg, #1a1a2e, #0f3460)', color: '#fff' }}>
                <Typography variant="h6" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                  <AddShoppingCartIcon /> Resumen Pedido
@@ -426,9 +455,10 @@ const TomarPedidoPage = () => {
               ) : (
                 carrito.map((item, index) => (
                   <Box key={item.uid}>
-                    <ListItem>
+                    <ListItem sx={{ alignItems: 'flex-start', gap: 1, pr: { xs: 1.5, sm: 2 }, minWidth: 0 }}>
                       <ListItemText 
-                        primary={<Typography variant="body2" fontWeight={600}>{item.nombre}</Typography>} 
+                        sx={{ minWidth: 0, mr: 1 }}
+                        primary={<Typography variant="body2" fontWeight={600} sx={{ overflowWrap: 'anywhere' }}>{item.nombre}</Typography>} 
                         secondary={
                           <Box>
                             <Typography variant="caption" color="text.secondary" display="block">
@@ -440,8 +470,7 @@ const TomarPedidoPage = () => {
                           </Box>
                         } 
                       />
-                      <ListItemSecondaryAction>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0 }}>
                           <Tooltip title="Disminuir cantidad">
                             <IconButton size="small" onClick={() => decrementarCantidad(item.uid)} color="primary">
                               <RemoveIcon fontSize="small" />
@@ -468,7 +497,6 @@ const TomarPedidoPage = () => {
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Box>
-                      </ListItemSecondaryAction>
                     </ListItem>
                     {observacionActiva === item.uid && (
                       <Box sx={{ px: 2, pb: 2 }}>

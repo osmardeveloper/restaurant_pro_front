@@ -42,6 +42,16 @@ body {
   touch-action: manipulation;
 }
 
+@media (max-width: 600px) {
+  html,
+  body,
+  #root,
+  .app-main-content {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+}
+
 /* Scrollbar personalizada */
 ::-webkit-scrollbar {
   width: 6px;

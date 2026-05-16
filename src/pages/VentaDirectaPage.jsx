@@ -302,13 +302,13 @@ const VentaDirectaPage = () => {
   const formatoCOP = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+    <Box sx={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
           <Box sx={{ p: 1, borderRadius: 2, background: 'linear-gradient(135deg, #4caf50, #388e3c)' }}>
             <StorefrontIcon sx={{ color: '#fff', display: 'block' }} />
           </Box>
-          <Box>
+          <Box sx={{ minWidth: 0 }}>
             <Typography variant="h5" fontWeight={700} color="#1a1a2e">Ventas Directas</Typography>
             <Typography variant="body2" color="text.secondary">{comandas.length} venta(s) activa(s)</Typography>
           </Box>
@@ -323,15 +323,15 @@ const VentaDirectaPage = () => {
           <Typography>No hay ventas directas activas.</Typography>
         </Box>
       ) : (
-        <Grid container spacing={2}>
+        <Grid container spacing={2} sx={{ width: '100%', m: 0 }}>
           {comandas.map((comanda) => {
             const hasPedido = !!comanda.ids_productos;
             const productosPedido = hasPedido ? agruparLineasPedido(comanda.ids_productos || []) : [];
             const productosLength = productosPedido.reduce((acc, producto) => acc + (producto.cantidad || 1), 0);
             const totalPedido = calcularTotalLineasPedido(comanda.ids_productos || []);
             return (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={comanda._id}>
-              <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }, borderTop: '4px solid #4caf50' }}>
+            <Grid item xs={12} sm={6} md={4} lg={3} key={comanda._id} sx={{ minWidth: 0 }}>
+              <Card elevation={0} sx={{ minWidth: 0, borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)', transition: 'all 0.2s ease', '&:hover': { transform: { xs: 'none', sm: 'translateY(-2px)' }, boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }, borderTop: '4px solid #4caf50', overflow: 'hidden' }}>
                 <CardContent sx={{ pb: 1 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                     <Typography variant="h6" fontWeight={800} color="#1a1a2e">Venta Directa</Typography>
@@ -354,21 +354,21 @@ const VentaDirectaPage = () => {
                     </Box>
                   )}
                   {hasPedido && productosPedido.slice(0, 3).map((plato, idx) => (
-                    <Chip key={plato.uid || `${plato.id_producto}-${idx}`} label={`${plato.cantidad || 1}x ${plato.nombre || 'Producto'}`} size="small" variant="outlined" sx={{ mr: 0.5, mb: 0.5, fontSize: '0.7rem' }} />
+                    <Chip key={plato.uid || `${plato.id_producto}-${idx}`} label={`${plato.cantidad || 1}x ${plato.nombre || 'Producto'}`} size="small" variant="outlined" sx={{ mr: 0.5, mb: 0.5, fontSize: '0.7rem', maxWidth: '100%', '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }} />
                   ))}
                   {productosLength > 3 && <Chip label={`+${productosLength - 3} más`} size="small" sx={{ fontSize: '0.7rem' }} />}
                 </CardContent>
                 <CardActions sx={{ flexDirection: 'column', gap: 1, pt: 0, px: 2, pb: 1.5 }}>
-                  <Box sx={{ width: '100%', display: 'flex', gap: 1 }}>
+                  <Box sx={{ width: '100%', display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
                     {hasPedido && (
                       <>
-                        <Button size="small" variant="outlined" onClick={() => imprimirComanda(comanda)} startIcon={<PrintIcon />} sx={{ borderRadius: 2, flex: 1 }} title="Imprimir Comanda de Cocina">
+                        <Button size="small" variant="outlined" onClick={() => imprimirComanda(comanda)} startIcon={<PrintIcon />} sx={{ borderRadius: 2, flex: 1, minWidth: 0 }} title="Imprimir Comanda de Cocina">
                           Comanda
                         </Button>
-                        <Button size="small" variant="outlined" onClick={() => abrirModalPropina(comanda)} startIcon={<PrintIcon />} sx={{ borderRadius: 2, flex: 1 }}>
+                        <Button size="small" variant="outlined" onClick={() => abrirModalPropina(comanda)} startIcon={<PrintIcon />} sx={{ borderRadius: 2, flex: 1, minWidth: 0 }}>
                           Cuenta
                         </Button>
-                        <Button size="small" variant="contained" color="success" onClick={() => irAFacturar(comanda)} startIcon={<PointOfSaleIcon />} sx={{ borderRadius: 2, flex: 1 }}>
+                        <Button size="small" variant="contained" color="success" onClick={() => irAFacturar(comanda)} startIcon={<PointOfSaleIcon />} sx={{ borderRadius: 2, flex: 1, minWidth: 0 }}>
                           Facturar
                         </Button>
                       </>
@@ -388,13 +388,13 @@ const VentaDirectaPage = () => {
       )}
 
       {/* Modal Editar Venta Directa */}
-      <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); setProductosOriginalesIds([]); }} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 3, minHeight: '80vh' } }}>
+      <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); setProductosOriginalesIds([]); }} maxWidth="lg" fullWidth PaperProps={{ sx: { borderRadius: 2, minHeight: '80vh', maxWidth: { xs: 'calc(100vw - 16px)', lg: '1200px' }, overflow: 'hidden' } }}>
         <DialogTitle sx={{ background: 'linear-gradient(135deg, #4caf50, #388e3c)', color: '#fff', fontWeight: 700 }}>
           Editar Venta Directa
         </DialogTitle>
-        <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column', height: '100%', overflowX: 'hidden' }}>
           <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-            <Grid container spacing={2}>
+            <Grid container spacing={2} sx={{ width: '100%', m: 0 }}>
               {/* Selector de Cliente */}
               <Grid item xs={12} sm={7} md={9}>
                 <Autocomplete
@@ -415,15 +415,15 @@ const VentaDirectaPage = () => {
               </Grid>
             </Grid>
           </Box>
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flex: 1, minHeight: 0, overflow: { xs: 'auto', md: 'hidden' } }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, flex: 1, minHeight: 0, minWidth: 0, overflow: { xs: 'auto', md: 'hidden' }, overflowX: 'hidden' }}>
             {/* Buscador de Productos (Izq) */}
-            <Box sx={{ flex: 2, p: { xs: 2, md: 3 }, borderRight: { md: '1px solid rgba(0,0,0,0.08)' }, borderBottom: { xs: '1px solid rgba(0,0,0,0.08)', md: 'none' }, display: 'flex', flexDirection: 'column', overflow: { xs: 'visible', md: 'hidden' }, minHeight: 0 }}>
+            <Box sx={{ flex: 2, minWidth: 0, p: { xs: 2, md: 3 }, borderRight: { md: '1px solid rgba(0,0,0,0.08)' }, borderBottom: { xs: '1px solid rgba(0,0,0,0.08)', md: 'none' }, display: 'flex', flexDirection: 'column', overflow: { xs: 'visible', md: 'hidden' }, overflowX: 'hidden', minHeight: 0 }}>
               <TextField 
                  fullWidth size="small" placeholder="Buscar producto para agregar..." 
                  value={busquedaProd} onChange={e => setBusquedaProd(e.target.value)}
                  sx={{ mb: 2 }}
               />
-              <Grid container spacing={1} sx={{ overflowY: 'auto', p: 1, alignContent: 'flex-start' }}>
+              <Grid container spacing={1} sx={{ width: '100%', m: 0, overflowY: 'auto', p: 1, alignContent: 'flex-start' }}>
                 {prodFiltrados.map(prod => (
                   <Grid item xs={12} sm={6} md={4} key={prod._id}>
                     <Box 
@@ -442,7 +442,7 @@ const VentaDirectaPage = () => {
             </Box>
             
             {/* Carrito de la Venta Directa (Der) */}
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa', minHeight: { xs: 320, md: 'auto' } }}>
+            <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa', minHeight: { xs: 320, md: 'auto' }, overflowX: 'hidden' }}>
               <Box sx={{ p: 2, bgcolor: '#f0f0f0', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
                 <Typography variant="subtitle2" fontWeight={700}>Productos del Pedido</Typography>
               </Box>
