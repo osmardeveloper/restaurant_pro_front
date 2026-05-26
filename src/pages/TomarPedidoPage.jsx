@@ -84,7 +84,7 @@ const TomarPedidoPage = () => {
         const [resCli, resMes, resProd] = await Promise.all([
           clienteService.getAll(),
           mesaService.getAll(),
-          productoService.getAll()
+          productoService.getAll({ soloVisibles: true })
         ]);
         setClientes(resCli.data);
         // Filtramos solo mesas disponibles y las ordenamos

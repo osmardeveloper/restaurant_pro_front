@@ -46,7 +46,7 @@ const PublicMenuPage = () => {
       }
 
       // Cargar productos
-      const res = await publicProductoService.getAll();
+      const res = await publicProductoService.getAll({ soloVisibles: true });
       setProductos(res.data);
     } catch (error) {
       console.error('Error al cargar menú:', error);

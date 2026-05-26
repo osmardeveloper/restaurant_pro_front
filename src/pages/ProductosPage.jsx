@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Box, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Typography, IconButton, Snackbar, Alert,
-  Paper, Tooltip, InputAdornment, MenuItem, Select, FormControl, InputLabel, Chip
+  Paper, Tooltip, InputAdornment, MenuItem, Select, FormControl, InputLabel, Chip, Switch, FormControlLabel
 } from '@mui/material';
 import { DataGrid }       from '@mui/x-data-grid';
 import AddIcon            from '@mui/icons-material/Add';
@@ -33,7 +33,7 @@ const CATEGORIAS_ESTATICAS = [
   { value: 'adicionales', label: 'Adicionales' },
 ];
 
-const FORM_INICIAL = { nombre: '', descripcion: '', tipo: 'platos_principales', precio: '', cantidad: '', costo: '' };
+const FORM_INICIAL = { nombre: '', descripcion: '', tipo: 'platos_principales', precio: '', cantidad: '', costo: '', visibleMenu: true };
 
 const ProductosPage = () => {
   const { usuario } = useAuth();
@@ -136,7 +136,8 @@ const ProductosPage = () => {
       tipo: row.tipo,
       precio: String(row.precio),
       cantidad: row.cantidad !== undefined ? String(row.cantidad) : '',
-      costo: row.costo !== undefined && row.costo !== null ? String(row.costo) : ''
+      costo: row.costo !== undefined && row.costo !== null ? String(row.costo) : '',
+      visibleMenu: row.visibleMenu !== false
     }); 
     setFormErrors({}); 
     setDialogOpen(true); 
@@ -151,7 +152,8 @@ const ProductosPage = () => {
         ...form, 
         precio: Number(String(form.precio).trim()), 
         cantidad: form.cantidad ? Number(String(form.cantidad).trim()) : 0,
-        costo: form.costo ? Number(String(form.costo).trim()) : null
+        costo: form.costo ? Number(String(form.costo).trim()) : null,
+        visibleMenu: form.visibleMenu !== false
       };
       
       if (editId) { 
@@ -228,6 +230,21 @@ const ProductosPage = () => {
     { 
       field: 'cantidad', headerName: 'Stock', width: 90,
       renderCell: ({ value }) => <Typography color={value <= 5 ? 'error' : 'inherit'}>{value}</Typography>
+    },
+    { 
+      field: 'visibleMenu', headerName: 'Visible en Menú', width: 140,
+      renderCell: ({ value }) => {
+        const isVisible = value !== false;
+        return (
+          <Chip 
+            label={isVisible ? 'Visible' : 'Oculto'} 
+            size="small" 
+            color={isVisible ? 'success' : 'default'} 
+            variant="outlined" 
+            sx={{ fontWeight: 600 }}
+          />
+        );
+      }
     },
     {
       field: 'acciones', headerName: 'Acciones', width: 110, sortable: false,
@@ -770,6 +787,23 @@ const ProductosPage = () => {
             disabled 
             helperText="Ajuste vía módulo de Inventario"
             InputProps={{ readOnly: true }}
+          />
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={form.visibleMenu !== false}
+                onChange={e => setForm(p => ({ ...p, visibleMenu: e.target.checked }))}
+                color="primary"
+              />
+            }
+            label={
+              <Box sx={{ ml: 1 }}>
+                <Typography variant="subtitle2" fontWeight={600} color="#1a1a2e">Visible en Menú</Typography>
+                <Typography variant="caption" color="text.secondary">¿Mostrar este producto en el menú y en la toma de pedidos?</Typography>
+              </Box>
+            }
+            sx={{ mt: 2, mb: 1, display: 'flex', alignItems: 'center' }}
           />
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>

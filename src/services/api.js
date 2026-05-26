@@ -60,7 +60,7 @@ export const usuarioService = {
 };
 
 export const productoService = {
-  getAll:  (tipo)     => api.get('/productos', { params: { tipo } }),
+  getAll:  (params)   => api.get('/productos', { params }),
   getById: (id)       => api.get(`/productos/${id}`),
   create:  (datos)    => api.post('/productos', datos),
   update:  (id, datos) => api.put(`/productos/${id}`, datos),
@@ -150,7 +150,7 @@ export const movimientoService = {
 // Servicios Públicos (para rutas sin autenticación)
 // ============================================================
 export const publicProductoService = {
-  getAll: (tipo) => publicApi.get('/productos', { params: { tipo } }),
+  getAll: (params) => publicApi.get('/productos', { params }),
 };
 
 export const publicCategoriasService = {
