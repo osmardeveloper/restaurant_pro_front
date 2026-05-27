@@ -63,50 +63,50 @@ const LoginPage = () => {
         elevation={0}
         sx={{
           width: '100%',
-          maxWidth: 312, // Reducido un 35% de 480px
+          maxWidth: 390, // Aumentado un 25% de 312px (390px)
           borderRadius: 3,
           background: 'rgba(255,255,255,0.05)',
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(255,255,255,0.12)',
         }}
       >
-        <CardContent sx={{ p: { xs: 2, sm: 2.5 } }}>
-          <Box sx={{ textAlign: 'center', mb: 1.5 }}>
-            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+        <CardContent sx={{ p: { xs: 2.5, sm: 3.5 } }}>
+          <Box sx={{ textAlign: 'center', mb: 2 }}>
+            <Box sx={{ mb: 2.5, display: 'flex', justifyContent: 'center' }}>
               <Box 
                 component="img" 
                 src="/images/logo_la_perla.png" 
                 alt="Logo La Perla" 
                 sx={{ 
-                  width: { xs: 110, sm: 156 }, // Reducido ~35% de 240px
+                  width: { xs: 120, sm: 170 }, // Escalado proporcionalmente para el nuevo ancho
                   height: 'auto', 
-                  borderRadius: '8px', 
+                  borderRadius: '10px', 
                   border: '3px solid #fff' 
                 }} 
               />
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: { xs: 0.75, sm: 1 }, flexWrap: 'wrap' }}>
-              <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: { xs: 28, sm: 32 }, height: { xs: 28, sm: 32 }, borderRadius: '50%', background: 'linear-gradient(135deg, #e94560, #c62a47)', boxShadow: '0 3px 10px rgba(233,69,96,0.3)' }}>
-                <RestaurantIcon sx={{ color: '#fff', fontSize: 16 }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: { xs: 1, sm: 1.25 }, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: { xs: 32, sm: 36 }, height: { xs: 32, sm: 36 }, borderRadius: '50%', background: 'linear-gradient(135deg, #e94560, #c62a47)', boxShadow: '0 3px 10px rgba(233,69,96,0.3)' }}>
+                <RestaurantIcon sx={{ color: '#fff', fontSize: 18 }} />
               </Box>
-              <Typography variant="h5" sx={{ color: '#fff', fontWeight: 700, fontSize: { xs: '1.15rem', sm: '1.35rem' } }}>
+              <Typography variant="h5" sx={{ color: '#fff', fontWeight: 700, fontSize: { xs: '1.3rem', sm: '1.5rem' } }}>
                 RestaurantPro
               </Typography>
-              <Box sx={{ display: { xs: 'none', sm: 'inline-flex' }, alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #e94560, #c62a47)', boxShadow: '0 3px 10px rgba(233,69,96,0.3)' }}>
-                <BrunchDiningIcon sx={{ color: '#fff', fontSize: 18 }} />
+              <Box sx={{ display: { xs: 'none', sm: 'inline-flex' }, alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #e94560, #c62a47)', boxShadow: '0 3px 10px rgba(233,69,96,0.3)' }}>
+                <BrunchDiningIcon sx={{ color: '#fff', fontSize: 20 }} />
               </Box>
             </Box>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.45)', mt: 0.5, mb: 1, fontSize: '0.8rem' }}>
+            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.45)', mt: 1, mb: 1.5, fontSize: '0.85rem' }}>
               Inicia sesión para continuar
             </Typography>
           </Box>
 
-          {error && <Alert severity="error" sx={{ mb: 1.5, py: 0.25, px: 1, fontSize: '0.8rem', borderRadius: 1.5 }}>{error}</Alert>}
+          {error && <Alert severity="error" sx={{ mb: 2, py: 0.5, px: 1.5, fontSize: '0.85rem', borderRadius: 1.5 }}>{error}</Alert>}
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
             <TextField
               fullWidth id="login-nombre" name="nombre" label="Nombre de usuario"
-              value={form.nombre} onChange={handleChange} margin="dense"
+              value={form.nombre} onChange={handleChange} margin="normal"
               size="small"
               InputProps={{
                 startAdornment: <InputAdornment position="start"><PersonIcon sx={{ color: 'rgba(255,255,255,0.4)', fontSize: 18 }} /></InputAdornment>,
@@ -121,7 +121,7 @@ const LoginPage = () => {
 
             <TextField
               fullWidth id="login-password" name="password" label="Contraseña"
-              type={showPass ? 'text' : 'password'} value={form.password} onChange={handleChange} margin="dense"
+              type={showPass ? 'text' : 'password'} value={form.password} onChange={handleChange} margin="normal"
               size="small"
               InputProps={{
                 startAdornment: <InputAdornment position="start"><LockIcon sx={{ color: 'rgba(255,255,255,0.4)', fontSize: 18 }} /></InputAdornment>,
@@ -145,7 +145,7 @@ const LoginPage = () => {
               fullWidth type="submit" variant="contained" size="medium" disabled={loading}
               id="login-submit-btn"
               sx={{
-                mt: 2, py: 1, borderRadius: 1.5,
+                mt: 3, py: 1.2, borderRadius: 1.5,
                 background: 'linear-gradient(135deg, #e94560, #c62a47)',
                 fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.5px',
                 boxShadow: '0 4px 16px rgba(233,69,96,0.4)',
