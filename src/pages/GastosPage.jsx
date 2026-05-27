@@ -47,6 +47,7 @@ const GastosPage = () => {
   // Filtros Periodo
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
+  const [nombreBusqueda, setNombreBusqueda] = useState('');
 
   const fetchGastos = useCallback(async () => {
     setLoading(true);
@@ -126,6 +127,17 @@ const GastosPage = () => {
     }
   };
 
+  const renderMetodoCelda = (g, metodo) => {
+    if (g.metodo_pago === metodo) {
+      return (
+        <Typography variant="body2" fontWeight={600} color="error.main">
+          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(g.monto)}
+        </Typography>
+      );
+    }
+    return <Typography variant="body2" color="text.secondary">—</Typography>;
+  };
+
   // ── FILTRADO DINÁMICO ──
   const gastosFiltrados = useMemo(() => {
     return gastos.filter(g => {
@@ -138,12 +150,25 @@ const GastosPage = () => {
         let match = true;
         if (fechaDesde) match = match && new Date(g.createdAt) >= new Date(fechaDesde + 'T00:00:00');
         if (fechaHasta) match = match && new Date(g.createdAt) <= new Date(fechaHasta + 'T23:59:59');
+        if (nombreBusqueda) {
+          match = match && g.nombre.toLowerCase().includes(nombreBusqueda.toLowerCase());
+        }
         return match;
       }
     });
-  }, [gastos, tab, fechaDesde, fechaHasta]);
+  }, [gastos, tab, fechaDesde, fechaHasta, nombreBusqueda]);
 
   const totalGastado = gastosFiltrados.reduce((acc, curr) => acc + (curr.monto || 0), 0);
+
+  const totalesPorMetodo = useMemo(() => {
+    const init = { efectivo: 0, bancolombia: 0, nequi: 0, daviplata: 0, datafono: 0 };
+    return gastosFiltrados.reduce((acc, curr) => {
+      if (acc[curr.metodo_pago] !== undefined) {
+        acc[curr.metodo_pago] += curr.monto || 0;
+      }
+      return acc;
+    }, init);
+  }, [gastosFiltrados]);
 
   return (
     <Box>
@@ -178,21 +203,28 @@ const GastosPage = () => {
 
         <Box sx={{ p: 3 }}>
           {tab === 1 && (
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-               <Grid item xs={6} md={3}>
+            <Grid container spacing={2} sx={{ mb: 3 }} alignItems="center">
+               <Grid item xs={6} md={2.5}>
                  <TextField 
                    fullWidth size="small" label="Desde" type="date" InputLabelProps={{ shrink: true }}
                    value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} 
                  />
                </Grid>
-               <Grid item xs={6} md={3}>
+               <Grid item xs={6} md={2.5}>
                  <TextField 
                    fullWidth size="small" label="Hasta" type="date" InputLabelProps={{ shrink: true }}
                    value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} 
                  />
                </Grid>
+               <Grid item xs={12} md={5}>
+                 <DebouncedSearchInput 
+                   fullWidth size="small" label="Buscar por nombre (ej. compra)" 
+                   value={nombreBusqueda} onChange={setNombreBusqueda} 
+                   delay={2000}
+                 />
+               </Grid>
                <Grid item xs={12} md={2}>
-                 <Button fullWidth variant="outlined" color="error" onClick={() => { setFechaDesde(''); setFechaHasta(''); }}>
+                 <Button fullWidth variant="outlined" color="error" onClick={() => { setFechaDesde(''); setFechaHasta(''); setNombreBusqueda(''); }}>
                    Limpiar
                  </Button>
                </Grid>
@@ -213,60 +245,87 @@ const GastosPage = () => {
                     <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>NOMBRE</TableCell>
                     <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>DESCRIPCIÓN</TableCell>
                     <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>REGISTRADO POR</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>MÉTODO/MONTO</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>EFECTIVO</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>BANCOLOMBIA</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>NEQUI</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>DAVIPLATA</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>DATÁFONO</TableCell>
                     <TableCell sx={{ fontWeight: 700, color: 'text.secondary', textAlign: 'center' }}>ACCIONES</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {gastosFiltrados.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                      <TableCell colSpan={11} align="center" sx={{ py: 6, color: 'text.secondary' }}>
                         No hay gastos registrados en este periodo
                       </TableCell>
                     </TableRow>
                   ) : (
-                    gastosFiltrados.map(g => (
-                      <TableRow key={g._id} hover>
-                        <TableCell><Typography fontWeight="bold">#{g.numero_gasto}</Typography></TableCell>
-                        <TableCell>{new Date(g.createdAt).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
-                        <TableCell><Typography variant="body2" fontWeight={600}>{g.nombre}</Typography></TableCell>
-                        <TableCell><Typography variant="body2" color="text.secondary">{g.descripcion || '—'}</Typography></TableCell>
-                        <TableCell>
-                           {g.id_usuario ? g.id_usuario.nombre : 'Sistema'}
+                    <>
+                      {gastosFiltrados.map(g => (
+                        <TableRow key={g._id} hover>
+                          <TableCell><Typography fontWeight="bold">#{g.numero_gasto}</Typography></TableCell>
+                          <TableCell>{new Date(g.createdAt).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' })}</TableCell>
+                          <TableCell><Typography variant="body2" fontWeight={600}>{g.nombre}</Typography></TableCell>
+                          <TableCell><Typography variant="body2" color="text.secondary">{g.descripcion || '—'}</Typography></TableCell>
+                          <TableCell>
+                             {g.id_usuario ? g.id_usuario.nombre : 'Sistema'}
+                          </TableCell>
+                          <TableCell>{renderMetodoCelda(g, 'efectivo')}</TableCell>
+                          <TableCell>{renderMetodoCelda(g, 'bancolombia')}</TableCell>
+                          <TableCell>{renderMetodoCelda(g, 'nequi')}</TableCell>
+                          <TableCell>{renderMetodoCelda(g, 'daviplata')}</TableCell>
+                          <TableCell>{renderMetodoCelda(g, 'datafono')}</TableCell>
+                          <TableCell align="center">
+                            {usuario?.rol === 'admin' && (
+                              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
+                                <IconButton size="small" color="primary" onClick={() => abrirEditar(g)}>
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton size="small" color="error" onClick={() => handleDelete(g._id)}>
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </Box>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow sx={{ background: 'rgba(0,0,0,0.04)', '& td': { py: 1.5 } }}>
+                        <TableCell colSpan={2}></TableCell>
+                        <TableCell sx={{ fontWeight: 700, fontSize: '0.85rem' }}>TOTALES</TableCell>
+                        <TableCell colSpan={2} sx={{ pr: 2 }}>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ fontSize: '0.65rem', lineHeight: 1 }}>
+                              TOTAL GENERAL
+                            </Typography>
+                            <Typography variant="body2" fontWeight={800} color="error.main" sx={{ fontSize: '0.95rem', mt: 0.5 }}>
+                              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalGastado)}
+                            </Typography>
+                          </Box>
                         </TableCell>
-                        <TableCell>
-                           <Typography variant="body2" fontWeight={600} color="error.main">
-                             {g.metodo_pago} - {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(g.monto)}
-                           </Typography>
+                        <TableCell sx={{ fontWeight: 700, color: 'error.main' }}>
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalesPorMetodo.efectivo)}
                         </TableCell>
-                        <TableCell align="center">
-                          {usuario?.rol === 'admin' && (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5 }}>
-                              <IconButton size="small" color="primary" onClick={() => abrirEditar(g)}>
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                              <IconButton size="small" color="error" onClick={() => handleDelete(g._id)}>
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Box>
-                          )}
+                        <TableCell sx={{ fontWeight: 700, color: 'error.main' }}>
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalesPorMetodo.bancolombia)}
                         </TableCell>
+                        <TableCell sx={{ fontWeight: 700, color: 'error.main' }}>
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalesPorMetodo.nequi)}
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700, color: 'error.main' }}>
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalesPorMetodo.daviplata)}
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 700, color: 'error.main' }}>
+                          {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalesPorMetodo.datafono)}
+                        </TableCell>
+                        <TableCell></TableCell>
                       </TableRow>
-                    ))
+                    </>
                   )}
                 </TableBody>
               </Table>
             </TableContainer>
           )}
-        </Box>
-
-        <Box sx={{ p: 3, display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #eee' }}>
-           <Paper elevation={0} sx={{ border: '1px solid #e0e0e0', borderRadius: 2, p: 2, bgcolor: '#fafafa', display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography variant="body1" fontWeight={700} color="text.secondary">TOTAL GASTADO:</Typography>
-              <Typography variant="h5" fontWeight={800} color="error.main">
-                {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(totalGastado)}
-              </Typography>
-           </Paper>
         </Box>
       </Paper>
 
@@ -327,6 +386,30 @@ const GastosPage = () => {
         <Alert severity={snack.severity} variant="filled" sx={{ borderRadius: 2 }}>{snack.msg}</Alert>
       </Snackbar>
     </Box>
+  );
+};
+
+// ── COMPONENTE OPTIMIZADO PARA BÚSQUEDA FLUIDA (EVITA RE-RENDERS LENTOS EN CADA TECLA) ──
+const DebouncedSearchInput = ({ value, onChange, delay = 2000, ...props }) => {
+  const [localValue, setLocalValue] = useState(value);
+
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      onChange(localValue);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [localValue, onChange, delay]);
+
+  return (
+    <TextField
+      {...props}
+      value={localValue}
+      onChange={e => setLocalValue(e.target.value)}
+    />
   );
 };
 
