@@ -9,6 +9,8 @@ import {
 } from '@mui/material';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import * as XLSX from 'xlsx';
 import { facturacionService, gastoService, costoService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -285,6 +287,153 @@ const CierreCajaPage = () => {
 
   const efectivoNeto = globalesIngreso.efectivo - globalesEgreso.efectivo - globalesCostos.efectivo;
 
+  const exportarExcel = () => {
+    try {
+      const wb = XLSX.utils.book_new();
+
+      // 1. Hoja de Resumen de Caja
+      const resumenRows = [
+        ["CIERRE DE CAJA - INFORME GENERAL"],
+        [`Período: ${fechaInicio} al ${fechaFin}`],
+        [`Generado el: ${new Date().toLocaleString('es-CO')}`],
+        [],
+        ["1. INGRESOS RECAUDADOS"],
+        ["Concepto / Método", "Monto"],
+        ["Total Facturado", globalesIngreso.total],
+        ["Total Propinas", globalesIngreso.propina],
+        ["Total Domicilios", totalDomicilioFacturas(filtradas)],
+        ...METODOS_PAGO.map(m => [`Ingresos ${m.toUpperCase()}`, globalesIngreso[m]]),
+        ["Efectivo Neto en Caja (Ingresos - Gastos - Costos)", efectivoNeto],
+        []
+      ];
+
+      if (isAdmin) {
+        resumenRows.push(
+          ["2. GASTOS POR MÉTODO DE PAGO"],
+          ["Método de Pago", "Monto"],
+          ...METODOS_PAGO.map(m => [`Gasto ${m.toUpperCase()}`, globalesEgreso[m]]),
+          ["Total Gastos", globalesEgreso.total],
+          [],
+          ["3. COSTOS OPERATIVOS POR MÉTODO DE PAGO"],
+          ["Método de Pago", "Monto"],
+          ...METODOS_PAGO.map(m => [`Costo ${m.toUpperCase()}`, globalesCostos[m]]),
+          ["Total Costos", globalesCostos.total],
+          [],
+          ["4. SALDOS TOTALES"],
+          ["Método de Pago", "Ingresos", "Gastos", "Costos", "Saldo Neto"],
+          ...METODOS_PAGO.map(m => [
+            m.toUpperCase(),
+            globalesIngreso[m],
+            globalesEgreso[m],
+            globalesCostos[m],
+            globalesIngreso[m] - globalesEgreso[m] - globalesCostos[m]
+          ]),
+          ["TOTALES GLOBALES", globalesIngreso.total, globalesEgreso.total, globalesCostos.total, globalesIngreso.total - globalesEgreso.total - globalesCostos.total]
+        );
+      }
+
+      const wsResumen = XLSX.utils.aoa_to_sheet(resumenRows);
+      XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen de Caja');
+
+      // 2. Hoja de Facturas
+      const datosFacturas = filtradas.map(f => {
+        const pagosPorMetodo = agruparPagosFactura(f);
+        const row = {
+          "Factura": f.numero_factura || '...',
+          "Fecha": new Date(f.createdAt).toLocaleString('es-CO'),
+          "Cliente": f.id_cliente ? `${f.id_cliente.nombre} ${f.id_cliente.apellido}` : 'Consumidor Final',
+          "Forma de Pago": nombreFormaPago(f),
+          "Total Factura": f.total_pagado || 0,
+          "Propina": totalPropinasFactura(f),
+          "Domicilio": f.a_domicilio ? (f.monto_domicilio || 0) : 0,
+        };
+        METODOS_PAGO.forEach(m => {
+          row[m.toUpperCase()] = pagosPorMetodo[m].total || 0;
+        });
+        return row;
+      });
+
+      if (datosFacturas.length > 0) {
+        const totalRowFacturas = {
+          "Factura": "TOTALES",
+          "Fecha": "",
+          "Cliente": "",
+          "Forma de Pago": "",
+          "Total Factura": globalesIngreso.total,
+          "Propina": globalesIngreso.propina,
+          "Domicilio": totalDomicilioFacturas(filtradas),
+        };
+        METODOS_PAGO.forEach(m => {
+          totalRowFacturas[m.toUpperCase()] = globalesIngreso[m];
+        });
+        datosFacturas.push(totalRowFacturas);
+      }
+
+      const wsFacturas = XLSX.utils.json_to_sheet(datosFacturas);
+      XLSX.utils.book_append_sheet(wb, wsFacturas, 'Facturas Detalladas');
+
+      // 3. Hoja de Gastos (Solo Admin)
+      if (isAdmin) {
+        const datosGastos = egresos.map(g => ({
+          "Egreso No.": g.numero_gasto || '...',
+          "Fecha": new Date(g.createdAt).toLocaleString('es-CO'),
+          "Nombre": g.nombre || '',
+          "Descripción": g.descripcion || '',
+          "Método de Pago": g.metodo_pago || '',
+          "Total": g.monto || 0,
+        }));
+
+        if (datosGastos.length > 0) {
+          datosGastos.push({
+            "Egreso No.": "TOTALES",
+            "Fecha": "",
+            "Nombre": "",
+            "Descripción": "",
+            "Método de Pago": "",
+            "Total": globalesEgreso.total,
+          });
+        }
+
+        const wsGastos = XLSX.utils.json_to_sheet(datosGastos);
+        XLSX.utils.book_append_sheet(wb, wsGastos, 'Gastos Detallados');
+      }
+
+      // 4. Hoja de Costos (Solo Admin)
+      if (isAdmin) {
+        const datosCostos = costosFiltrados.map(c => ({
+          "Costo No.": c.numero_costo || '...',
+          "Fecha": new Date(c.createdAt).toLocaleString('es-CO'),
+          "Nombre": c.nombre || '',
+          "Descripción": c.descripcion || '',
+          "Método de Pago": c.metodo_pago || '',
+          "Total": c.monto || 0,
+        }));
+
+        if (datosCostos.length > 0) {
+          datosCostos.push({
+            "Costo No.": "TOTALES",
+            "Fecha": "",
+            "Nombre": "",
+            "Descripción": "",
+            "Método de Pago": "",
+            "Total": globalesCostos.total,
+          });
+        }
+
+        const wsCostos = XLSX.utils.json_to_sheet(datosCostos);
+        XLSX.utils.book_append_sheet(wb, wsCostos, 'Costos Detallados');
+      }
+
+      // Descargar el libro Excel
+      const fechaStr = `${fechaInicio}_al_${fechaFin}`;
+      XLSX.writeFile(wb, `Cierre_Caja_${fechaStr}.xlsx`);
+      setSnack({ open: true, msg: 'Cierre de caja exportado a Excel correctamente.', severity: 'success' });
+    } catch (err) {
+      console.error(err);
+      setSnack({ open: true, msg: 'Error al exportar a Excel.', severity: 'error' });
+    }
+  };
+
   return (
     <Box>
       <style>{PRINT_STYLE}</style>
@@ -309,11 +458,14 @@ const CierreCajaPage = () => {
             <Grid item xs={12} md={3}>
               <TextField fullWidth size="small" type="date" InputLabelProps={{ shrink: true }} value={fechaFin} onChange={e => setFechaFin(e.target.value)} />
             </Grid>
-            <Grid item xs={6} md={2}>
+            <Grid item xs={4} md={2}>
               <Button fullWidth variant="contained" color="primary" onClick={fetchData}>Consultar</Button>
             </Grid>
-            <Grid item xs={6} md={2}>
+            <Grid item xs={4} md={2}>
               <Button fullWidth variant="contained" color="error" startIcon={<InsertDriveFileIcon />} onClick={() => window.print()}>PDF</Button>
+            </Grid>
+            <Grid item xs={4} md={2}>
+              <Button fullWidth variant="contained" color="success" startIcon={<FileDownloadIcon />} onClick={exportarExcel} sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}>Excel</Button>
             </Grid>
           </Grid>
         </Paper>
