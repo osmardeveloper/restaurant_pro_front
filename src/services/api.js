@@ -3,8 +3,8 @@
 // ============================================================
 import axios from 'axios';
 
-// Detectar si estamos en desarrollo o producción
-const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+// Detectar si estamos en desarrollo o producción usando las variables de entorno de Vite
+const isDevelopment = import.meta.env.DEV;
 
 const api = axios.create({
   baseURL: isDevelopment
@@ -144,6 +144,15 @@ export const configuracionService = {
 export const movimientoService = {
   getAll: (params) => api.get('/inventario', { params }),
   create: (datos)  => api.post('/inventario', datos),
+};
+
+export const turnosTrabajadosService = {
+  getAll: () => api.get('/turnos-trabajados'),
+  getById: (id) => api.get(`/turnos-trabajados/${id}`),
+  getByUserMonth: (usuarioId, mes) => api.get(`/turnos-trabajados/usuario/${usuarioId}/mes/${mes}`),
+  createOrUpdate: (datos) => api.post('/turnos-trabajados', datos),
+  update: (id, datos) => api.put(`/turnos-trabajados/${id}`, datos),
+  remove: (id, masterKey) => api.delete(`/turnos-trabajados/${id}`, { headers: { 'x-master-key': masterKey } }),
 };
 
 // ============================================================

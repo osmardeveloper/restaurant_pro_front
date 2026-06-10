@@ -5,7 +5,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CircularProgress, Box } from '@mui/material';
 
-const ProtectedRoute = ({ children, modulo }) => {
+const ProtectedRoute = ({ children, modulo, adminOnly }) => {
   const { isAuthenticated, usuario, permisos, loadingPermisos } = useAuth();
 
   if (!isAuthenticated) {
@@ -19,6 +19,11 @@ const ProtectedRoute = ({ children, modulo }) => {
         <CircularProgress sx={{ color: '#e94560' }} />
       </Box>
     );
+  }
+
+  // Si es exclusivo para administrador
+  if (adminOnly && usuario?.rol !== 'admin') {
+    return <Navigate to="/" replace />;
   }
 
   // Verificación de permisos por módulo

@@ -27,6 +27,7 @@ import RequestQuoteIcon   from '@mui/icons-material/RequestQuote';
 import AttachMoneyIcon    from '@mui/icons-material/AttachMoney';
 import AssessmentIcon     from '@mui/icons-material/Assessment';
 import HistoryIcon        from '@mui/icons-material/History';
+import CalendarMonthIcon  from '@mui/icons-material/CalendarMonth';
 import { useAuth }        from '../context/AuthContext';
 import { configuracionService } from '../services/api';
 
@@ -45,6 +46,7 @@ const navItems = [
   { key: 'reservas',     label: 'Reservas',     path: '/reservas',     icon: <EventAvailableIcon /> },
   { key: 'facturacion',  label: 'Facturación',  path: '/facturacion',  icon: <PointOfSaleIcon /> },
   { key: 'auditoria_facturacion', label: 'Auditoría de Facturas', path: '/auditoria-facturacion', icon: <HistoryIcon />, requiereAdmin: true },
+  { key: 'turnos_trabajados', label: 'Turnos Trabajados', path: '/turnos-trabajados', icon: <CalendarMonthIcon />, requiereAdmin: true },
   { key: 'gastos',       label: 'Gastos',       path: '/gastos',       icon: <RequestQuoteIcon /> },
   { key: 'costos',       label: 'Costos',       path: '/costos',       icon: <AttachMoneyIcon /> },
   { key: 'inventario',   label: 'Inventario',   path: '/inventario',   icon: <InventoryIcon /> },

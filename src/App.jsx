@@ -23,6 +23,7 @@ import GastosPage       from './pages/GastosPage';
 import CostosPage       from './pages/CostosPage';
 import CierreCajaPage  from './pages/CierreCajaPage';
 import InventarioPage  from './pages/InventarioPage';
+import TurnosTrabajadosPage from './pages/TurnosTrabajadosPage';
 
 function App() {
   return (
@@ -57,6 +58,7 @@ function App() {
             <Route path="auditoria-facturacion" element={<ProtectedRoute modulo="facturacion"><AuditoriaFacturacionPage /></ProtectedRoute>} />
             <Route path="gastos"       element={<ProtectedRoute modulo="gastos"><GastosPage /></ProtectedRoute>} />
             <Route path="costos"       element={<ProtectedRoute modulo="costos"><CostosPage /></ProtectedRoute>} />
+            <Route path="turnos-trabajados" element={<ProtectedRoute adminOnly={true}><TurnosTrabajadosPage /></ProtectedRoute>} />
             <Route path="inventario"   element={<ProtectedRoute modulo="inventario"><InventarioPage /></ProtectedRoute>} />
             <Route path="cierre-caja"  element={<ProtectedRoute modulo="cierre_caja"><CierreCajaPage /></ProtectedRoute>} />
           </Route>
